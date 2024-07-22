@@ -1,0 +1,546 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Expense Tracker API",
+    "version": "1.0.0",
+    "description": "API for managing expenses, categories, and subcategories"
+  },
+  "paths": {
+    "/api/categories": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Retrieve all categories",
+        "description": "Fetch a comprehensive list of all available expense categories.",
+        "responses": {
+          "200": {
+            "description": "A list of categories.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Create a new category",
+        "description": "Add a new category to organize your expenses. Each category must have a unique name.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the category."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The category was successfully created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories/{id}": {
+      "put": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Update an existing category",
+        "description": "Modify the details of an existing category by its ID. Only the name of the category can be changed.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique ID of the category."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The new name of the category."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The category was successfully updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The category with the specified ID was not found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Delete a category",
+        "description": "Remove an existing category by its ID. Note that this action cannot be undone.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique ID of the category."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The category was successfully deleted."
+          },
+          "404": {
+            "description": "The category with the specified ID was not found."
+          }
+        }
+      }
+    },
+    "/api/expenses": {
+      "get": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "Retrieve all expenses",
+        "description": "Get a detailed list of all recorded expenses, including description, amount, category, subcategory, and date.",
+        "responses": {
+          "200": {
+            "description": "A list of expenses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Expense"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "Create a new expense",
+        "description": "Record a new expense entry. Each expense must include a description, amount, category, subcategory, and date.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "description",
+                  "amount",
+                  "category",
+                  "subcategory",
+                  "date"
+                ],
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "A brief description of the expense."
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "The monetary amount of the expense."
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "The category under which this expense falls."
+                  },
+                  "subcategory": {
+                    "type": "string",
+                    "description": "The subcategory under which this expense falls."
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "The date when the expense was incurred."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The expense was successfully created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expenses/{id}": {
+      "put": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "Update an existing expense",
+        "description": "Modify the details of an existing expense by its ID. You can change the description, amount, category, subcategory, and date.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique ID of the expense."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "A brief description of the expense."
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "The monetary amount of the expense."
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "The category under which this expense falls."
+                  },
+                  "subcategory": {
+                    "type": "string",
+                    "description": "The subcategory under which this expense falls."
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "The date when the expense was incurred."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The expense was successfully updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Expense"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The expense with the specified ID was not found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "Delete an expense",
+        "description": "Remove an existing expense by its ID. Note that this action cannot be undone.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique ID of the expense."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The expense was successfully deleted."
+          },
+          "404": {
+            "description": "The expense with the specified ID was not found."
+          }
+        }
+      }
+    },
+    "/api/expenses/upload": {
+      "post": {
+        "tags": [
+          "Expenses"
+        ],
+        "summary": "Upload an expense file (image or audio) to log an expense using AI",
+        "description": "Upload an image or audio file to create a new expense entry. The file should be either an image (jpeg, jpg, png, webp, gif) or audio (flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm). The AI processes the uploaded file to automatically recognize and log the expense details, making data entry quick and effortless.",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The image or audio file to upload.",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The expense was successfully logged by the AI.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Expense logged successfully by AI."
+                    },
+                    "expense": {
+                      "type": "object",
+                      "$ref": "#/components/schemas/Expense"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No file uploaded or unsupported file type."
+          },
+          "500": {
+            "description": "Error processing the file."
+          }
+        }
+      }
+    },
+    "/api/subcategories": {
+      "get": {
+        "tags": [
+          "Subcategories"
+        ],
+        "summary": "Retrieve all subcategories",
+        "description": "Fetch a comprehensive list of all available expense subcategories.",
+        "responses": {
+          "200": {
+            "description": "A list of subcategories.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Subcategory"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Subcategories"
+        ],
+        "summary": "Create a new subcategory",
+        "description": "Add a new subcategory to organize your expenses under a specific category. Each subcategory must have a unique name and a valid category ID.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categoryId"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the subcategory."
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "description": "The ID of the category this subcategory belongs to."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The subcategory was successfully created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subcategory"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subcategories/{id}": {
+      "put": {
+        "tags": [
+          "Subcategories"
+        ],
+        "summary": "Update an existing subcategory",
+        "description": "Modify the details of an existing subcategory by its ID. Only the name and category ID can be changed.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique ID of the subcategory."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The new name of the subcategory."
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "description": "The ID of the category this subcategory belongs to."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The subcategory was successfully updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subcategory"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The subcategory with the specified ID was not found."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Subcategories"
+        ],
+        "summary": "Delete a subcategory",
+        "description": "Remove an existing subcategory by its ID. Note that this action cannot be undone.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique ID of the subcategory."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The subcategory was successfully deleted."
+          },
+          "404": {
+            "description": "The subcategory with the specified ID was not found."
+          }
+        }
+      }
+    }
+  },
+  "components": {},
+  "tags": [
+    {
+      "name": "Categories",
+      "description": "API for managing expense categories"
+    },
+    {
+      "name": "Expenses",
+      "description": "API for managing expenses"
+    },
+    {
+      "name": "Subcategories",
+      "description": "API for managing expense subcategories"
+    }
+  ]
+}

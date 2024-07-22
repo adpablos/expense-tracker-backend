@@ -1,0 +1,4 @@
+// __mocks__/db.ts
+export const pool = {
+  query: jest.fn(),
+};
