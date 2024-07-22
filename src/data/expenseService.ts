@@ -2,6 +2,13 @@ import { Pool } from 'pg';
 import { Expense } from '../models/Expense';
 import { AppError } from '../utils/AppError';
 
+interface ExpenseFilters {
+    startDate?: Date;
+    endDate?: Date;
+    page: number;
+    limit: number;
+}
+
 export class ExpenseService {
     private db: Pool;
 
@@ -9,10 +16,39 @@ export class ExpenseService {
         this.db = db;
     }
 
-    async getAllExpenses(): Promise<Expense[]> {
+    async getExpenses(filters: ExpenseFilters): Promise<{ expenses: Expense[], totalItems: number }> {
+        const { startDate, endDate, page, limit } = filters;
+        const offset = (page - 1) * limit;
+        const params: any[] = [limit, offset];
+        const countParams: any[] = [];
+        let query = 'SELECT * FROM expenses';
+        let countQuery = 'SELECT COUNT(*) FROM expenses';
+
+        if (startDate || endDate) {
+            query += ' WHERE';
+            countQuery += ' WHERE';
+            if (startDate) {
+                query += ' date >= $3';
+                countQuery += ' date >= $1';
+                params.push(startDate);
+                countParams.push(startDate);
+            }
+            if (endDate) {
+                query += (startDate ? ' AND' : '') + ' date <= $4';
+                countQuery += (startDate ? ' AND' : '') + ' date <= $2';
+                params.push(endDate);
+                countParams.push(endDate);
+            }
+        }
+
+        query += ' ORDER BY date DESC LIMIT $1 OFFSET $2';
+
         try {
-            const result = await this.db.query('SELECT * FROM expenses');
-            return result.rows.map(Expense.fromDatabase);
+            const result = await this.db.query(query, params);
+            const countResult = await this.db.query(countQuery, countParams);
+            const totalItems = parseInt(countResult.rows[0].count, 10);
+
+            return { expenses: result.rows.map(Expense.fromDatabase), totalItems };
         } catch (error) {
             throw new AppError('Error fetching expenses', 500);
         }

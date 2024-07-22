@@ -7,13 +7,58 @@ import {analyzeTranscription, processReceipt, transcribeAudio} from '../external
 import fs from "fs";
 import path from 'path';
 import {AppError} from "../utils/AppError";
+import { parseISO, isValid } from 'date-fns';
 
 const expenseService = new ExpenseService(pool);
 
 export const getExpenses = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const expenses = await expenseService.getAllExpenses();
-        res.json(expenses);
+        const { startDate, endDate, page = 1, limit = 10 } = req.query;
+
+        // Date validation
+        let startDateParsed: Date | undefined;
+        let endDateParsed: Date | undefined;
+
+        if (startDate) {
+            startDateParsed = parseISO(startDate as string);
+            if (!isValid(startDateParsed)) {
+                return res.status(400).json({ message: 'Invalid startDate format. Expected format: YYYY-MM-DD' });
+            }
+        }
+
+        if (endDate) {
+            endDateParsed = parseISO(endDate as string);
+            if (!isValid(endDateParsed)) {
+                return res.status(400).json({ message: 'Invalid endDate format. Expected format: YYYY-MM-DD' });
+            }
+        }
+
+        // Pagination validation
+        const pageNumber = parseInt(page as string, 10);
+        const limitNumber = parseInt(limit as string, 10);
+        if (isNaN(pageNumber) || pageNumber < 1) {
+            return res.status(400).json({ message: 'Invalid page number. Must be a positive integer.' });
+        }
+        if (isNaN(limitNumber) || limitNumber < 1) {
+            return res.status(400).json({ message: 'Invalid limit number. Must be a positive integer.' });
+        }
+
+        const { expenses, totalItems } = await expenseService.getExpenses({
+            startDate: startDateParsed,
+            endDate: endDateParsed,
+            page: pageNumber,
+            limit: limitNumber,
+        });
+
+        const totalPages = Math.ceil(totalItems / limitNumber);
+
+        res.json({
+            page: pageNumber,
+            totalPages,
+            nextPage: pageNumber < totalPages ? pageNumber + 1 : null,
+            totalItems,
+            expenses
+        });
     } catch (error) {
         next(error);
     }
