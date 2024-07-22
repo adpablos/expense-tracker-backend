@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { ExpenseService } from '../services/expenseService';
+import { ExpenseService } from '../data/expenseService';
 import { Expense } from '../models/Expense';
 import { pool } from '../db';
 import { encodeImage } from '../utils/encodeImage';
-import {analyzeTranscription, processReceipt, transcribeAudio} from '../services/openaiService';
+import {analyzeTranscription, processReceipt, transcribeAudio} from '../external/openaiService';
 import fs from "fs";
 import path from 'path';
 import {AppError} from "../utils/AppError";
