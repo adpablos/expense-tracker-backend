@@ -1,12 +1,12 @@
 import request from 'supertest';
-import express from 'express';
+import express, { Application } from 'express';
 import expenseRoutes from '../routes/expenseRoutes';
 import multer from 'multer';
-import { ExpenseService } from '../services/expenseService';
-import { processReceipt } from '../services/openaiService';
+import {ExpenseService} from '../data/expenseService';
+import {processReceipt} from '../external/openaiService';
 
-const app = express();
-const upload = multer({ dest: 'uploads/' });
+const app: Application = express();
+multer({ dest: 'uploads/' });
 app.use(express.json());
 app.use('/api/expenses', expenseRoutes);
 
@@ -28,8 +28,7 @@ describe('Expense Routes', () => {
     });
 
     it('should create a new expense', async () => {
-        const createExpenseMock = jest.fn().mockResolvedValue(mockExpense);
-        ExpenseService.prototype.createExpense = createExpenseMock;
+        ExpenseService.prototype.createExpense = jest.fn().mockResolvedValue(mockExpense);
 
         const res = await request(app)
             .post('/api/expenses')
@@ -47,8 +46,7 @@ describe('Expense Routes', () => {
     });
 
     it('should get all expenses', async () => {
-        const getAllExpensesMock = jest.fn().mockResolvedValue([mockExpense]);
-        ExpenseService.prototype.getAllExpenses = getAllExpensesMock;
+        ExpenseService.prototype.getAllExpenses = jest.fn().mockResolvedValue([mockExpense]);
 
         const res = await request(app).get('/api/expenses');
         expect(res.statusCode).toEqual(200);
@@ -57,11 +55,10 @@ describe('Expense Routes', () => {
     });
 
     it('should update an existing expense', async () => {
-        const updateExpenseMock = jest.fn().mockResolvedValue({
+        ExpenseService.prototype.updateExpense = jest.fn().mockResolvedValue({
             ...mockExpense,
             description: 'Updated test expense'
         });
-        ExpenseService.prototype.updateExpense = updateExpenseMock;
 
         const res = await request(app)
             .put(`/api/expenses/${mockExpense.id}`)
@@ -79,8 +76,7 @@ describe('Expense Routes', () => {
     });
 
     it('should return 404 when trying to update a non-existent expense', async () => {
-        const updateExpenseMock = jest.fn().mockResolvedValue(null);
-        ExpenseService.prototype.updateExpense = updateExpenseMock;
+        ExpenseService.prototype.updateExpense = jest.fn().mockResolvedValue(null);
 
         const res = await request(app)
             .put('/api/expenses/nonexistentid')
@@ -120,7 +116,7 @@ describe('Expense Routes', () => {
             })
         );
 
-        const createExpenseMock = jest.fn().mockResolvedValue({
+        ExpenseService.prototype.createExpense = jest.fn().mockResolvedValue({
             id: '2',
             description: 'Monthly maintenance fee',
             amount: 100.00,
@@ -128,8 +124,6 @@ describe('Expense Routes', () => {
             subcategory: 'Mantenimiento',
             date: '2024-07-21'
         });
-
-        ExpenseService.prototype.createExpense = createExpenseMock;
 
         const res = await request(app)
             .post('/api/expenses/upload')

@@ -1,14 +1,15 @@
 import clientOpenAI from '../config/openaiConfig';
 import {Expense} from "../models/Expense";
-import { ExpenseService } from './expenseService';
+import { ExpenseService } from '../data/expenseService';
+import { CategoryHierarchyService } from "../data/CategoryHierarchyService";
 import {pool} from "../db";
 import fs from "fs";
 import OpenAI from "openai";
-import ChatCompletionMessageToolCall = OpenAI.ChatCompletionMessageToolCall;
 
 const expenseService = new ExpenseService(pool);
+const categoryHierarchyService = new CategoryHierarchyService(pool);
 
-async function extracted(functionCall: ChatCompletionMessageToolCall.Function | undefined) {
+async function extracted(functionCall: OpenAI.ChatCompletionMessageToolCall.Function | undefined) {
     if (functionCall && functionCall.name === "log_expense") {
         const {date, amount, category, subcategory, notes} = JSON.parse(functionCall.arguments);
 
@@ -28,6 +29,8 @@ async function extracted(functionCall: ChatCompletionMessageToolCall.Function | 
 }
 
 export const processReceipt = async (base64Image: string) => {
+    const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories();
+    const currentDate = new Date().toISOString().split('T')[0]; // Today's date in format YYYY-MM-DD
 
     const response = await clientOpenAI.chat.completions.create({
         model: "gpt-4o-mini",
@@ -37,7 +40,7 @@ export const processReceipt = async (base64Image: string) => {
                 content: [
                     {
                         type: "text",
-                        text: "Extract the receipt details and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n- Casa: Hipoteca, HOA, Mantenimiento, Seguro \n- Coche: Gasolina, Mantenimiento, Seguro, Peajes \n- Servicios: Gas, Internet, Agua, Luz, Teléfono \n- Ocio: Restaurantes, Streaming - tv, Gym, Music \n- Vacaciones: Vuelos, Hotel \n- Súper: Comida \n- Otros: Médico, Dentista, Formación, Regalos\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: \"2024-07-21\", amount: 100.00, category: \"Casa\", subcategory: \"Mantenimiento\", notes: \"Monthly maintenance fee\"})\n"
+                        text: `Extract the receipt details and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n${categoriesString}\n\nTo determine the date, use what is explicitly mentioned in the image, otherwise, use the current date by default (${currentDate}).\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: \"2024-07-21\", amount: 100.00, category: \"Casa\", subcategory: \"Mantenimiento\", notes: \"Monthly maintenance fee\"})\n`
                     },
                     {
                         type: "image_url",
@@ -110,6 +113,9 @@ export const transcribeAudio = async (filePath: string): Promise<string> => {
 };
 
 export const analyzeTranscription = async (transcription: string): Promise<Expense | null> => {
+    const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories();
+    const currentDate = new Date().toISOString().split('T')[0]; // Today's date in format YYYY-MM-DD
+
     const response = await clientOpenAI.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -118,7 +124,7 @@ export const analyzeTranscription = async (transcription: string): Promise<Expen
                 content: [
                     {
                         type: "text",
-                        text: `Extract the transcription details ${transcription} and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n- Casa: Hipoteca, HOA, Mantenimiento, Seguro \n- Coche: Gasolina, Mantenimiento, Seguro, Peajes \n- Servicios: Gas, Internet, Agua, Luz, Teléfono \n- Ocio: Restaurantes, Streaming - tv, Gym, Music \n- Vacaciones: Vuelos, Hotel \n- Súper: Comida \n- Otros: Médico, Dentista, Formación, Regalos\n\nTo determine the date, use what is explicitly mentioned in the transcription, otherwise, use the current date by default.\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: \"2024-07-21\", amount: 100.00, category: \"Casa\", subcategory: \"Mantenimiento\", notes: \"Monthly maintenance fee\"})\n`
+                        text: `Extract the transcription details: ${transcription} and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n${categoriesString}\n\nTo determine the date, use what is explicitly mentioned in the transcription, otherwise, use the current date by default (${currentDate}).\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: \"2024-07-21\", amount: 100.00, category: \"Casa\", subcategory: \"Mantenimiento\", notes: \"Monthly maintenance fee\"})\n`
                     }
                 ]
             }
