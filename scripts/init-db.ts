@@ -12,6 +12,9 @@ async function initializeDatabase() {
         database: 'postgres',
         password: process.env.DB_PASSWORD,
         port: parseInt(process.env.DB_PORT || '5432'),
+        ssl: {
+            rejectUnauthorized: false
+        }
     });
 
     try {
@@ -39,6 +42,9 @@ async function initializeDatabase() {
             database: 'expense_tracker',
             password: process.env.DB_PASSWORD,
             port: parseInt(process.env.DB_PORT || '5432'),
+            ssl: {
+                rejectUnauthorized: false
+            }
         });
 
         await dbClient.connect();
