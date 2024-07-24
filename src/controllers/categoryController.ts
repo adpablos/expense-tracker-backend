@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { CategoryService } from '../data/categoryService';
 import { Category } from '../models/Category';
-import { pool } from '../db';
+import { pool } from '../config/db';
 import logger from '../config/logger';
 
 const categoryService = new CategoryService(pool);

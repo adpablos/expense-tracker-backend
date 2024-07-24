@@ -1,2 +1,2 @@
 // jest.setup.ts
-jest.mock('./src/db');
+jest.mock('./src/config/db');
