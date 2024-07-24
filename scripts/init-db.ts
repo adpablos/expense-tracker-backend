@@ -9,7 +9,7 @@ async function initializeDatabase() {
     const client = new Client({
         user: process.env.DB_USER,
         host: process.env.DB_HOST,
-        database: 'postgres',
+        database: process.env.DB_DATABASE,  // Usar la base de datos proporcionada por Render
         password: process.env.DB_PASSWORD,
         port: parseInt(process.env.DB_PORT || '5432'),
         ssl: {
@@ -20,46 +20,17 @@ async function initializeDatabase() {
     try {
         await client.connect();
 
-        // Crear la base de datos si no existe
-        await client.query(`
-            SELECT FROM pg_database WHERE datname = 'expense_tracker';
-        `).then(async (res: any) => {  // Añadir tipo explícito para 'res'
-            if (res.rowCount === 0) {
-                await client.query('CREATE DATABASE expense_tracker');
-                console.log('Database created successfully');
-            } else {
-                console.log('Database already exists');
-            }
-        });
-
-        // Cerrar la conexión al servidor principal
-        await client.end();
-
-        // Conectar a la base de datos expense_tracker
-        const dbClient = new Client({
-            user: process.env.DB_USER,
-            host: process.env.DB_HOST,
-            database: 'expense_tracker',
-            password: process.env.DB_PASSWORD,
-            port: parseInt(process.env.DB_PORT || '5432'),
-            ssl: {
-                rejectUnauthorized: false
-            }
-        });
-
-        await dbClient.connect();
-
         // Leer y ejecutar el script de creación de tablas
         const sqlScript = fs.readFileSync(path.join(__dirname, 'init-db.sql'), 'utf8');
-        await dbClient.query(sqlScript);
+        await client.query(sqlScript);
         console.log('Tables created successfully');
 
         // Leer y ejecutar el script de inserción de datos
         const dataScript = fs.readFileSync(path.join(__dirname, 'init-db-data.sql'), 'utf8');
-        await dbClient.query(dataScript);
+        await client.query(dataScript);
         console.log('Initial data inserted successfully');
 
-        await dbClient.end();
+        await client.end();
 
     } catch (err) {
         console.error('Error initializing database:', err);
