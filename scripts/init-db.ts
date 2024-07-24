@@ -20,7 +20,7 @@ async function initializeDatabase() {
         // Crear la base de datos si no existe
         await client.query(`
             SELECT FROM pg_database WHERE datname = 'expense_tracker';
-        `).then(async (res) => {
+        `).then(async (res: any) => {  // Añadir tipo explícito para 'res'
             if (res.rowCount === 0) {
                 await client.query('CREATE DATABASE expense_tracker');
                 console.log('Database created successfully');
