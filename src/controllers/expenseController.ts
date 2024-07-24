@@ -3,11 +3,12 @@ import { ExpenseService } from '../data/expenseService';
 import { Expense } from '../models/Expense';
 import { pool } from '../db';
 import { encodeImage } from '../utils/encodeImage';
-import {analyzeTranscription, processReceipt, transcribeAudio} from '../external/openaiService';
-import fs from "fs";
+import { analyzeTranscription, processReceipt, transcribeAudio } from '../external/openaiService';
+import fs from 'fs';
 import path from 'path';
-import {AppError} from "../utils/AppError";
+import { AppError } from '../utils/AppError';
 import { parseISO, isValid } from 'date-fns';
+import logger from '../config/logger';
 
 const expenseService = new ExpenseService(pool);
 
@@ -22,6 +23,7 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
         if (startDate) {
             startDateParsed = parseISO(startDate as string);
             if (!isValid(startDateParsed)) {
+                logger.warn('Invalid startDate format: %s', startDate);
                 return res.status(400).json({ message: 'Invalid startDate format. Expected format: YYYY-MM-DD' });
             }
         }
@@ -29,6 +31,7 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
         if (endDate) {
             endDateParsed = parseISO(endDate as string);
             if (!isValid(endDateParsed)) {
+                logger.warn('Invalid endDate format: %s', endDate);
                 return res.status(400).json({ message: 'Invalid endDate format. Expected format: YYYY-MM-DD' });
             }
         }
@@ -37,9 +40,11 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
         const pageNumber = parseInt(page as string, 10);
         const limitNumber = parseInt(limit as string, 10);
         if (isNaN(pageNumber) || pageNumber < 1) {
+            logger.warn('Invalid page number: %s', page);
             return res.status(400).json({ message: 'Invalid page number. Must be a positive integer.' });
         }
         if (isNaN(limitNumber) || limitNumber < 1) {
+            logger.warn('Invalid limit number: %s', limit);
             return res.status(400).json({ message: 'Invalid limit number. Must be a positive integer.' });
         }
 
@@ -52,6 +57,8 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
 
         const totalPages = Math.ceil(totalItems / limitNumber);
 
+        logger.info('Retrieved expenses', { startDate, endDate, page: pageNumber, limit: limitNumber, totalItems });
+
         res.json({
             page: pageNumber,
             totalPages,
@@ -60,6 +67,7 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
             expenses
         });
     } catch (error) {
+        logger.error('Error fetching expenses: %s', error);
         next(error);
     }
 };
@@ -69,8 +77,12 @@ export const addExpense = async (req: Request, res: Response, next: NextFunction
         const { description, amount, category, subcategory, date } = req.body;
         const newExpense = new Expense(description, amount, category, subcategory, new Date(date));
         const createdExpense = await expenseService.createExpense(newExpense);
+
+        logger.info('Added new expense', { description, amount, category, subcategory, date });
+
         res.status(201).json(createdExpense);
     } catch (error) {
+        logger.error('Error adding expense: %s', error);
         next(error);
     }
 };
@@ -80,10 +92,15 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
         const id = req.params.id;
         const updatedExpense = await expenseService.updateExpense(id, req.body);
         if (!updatedExpense) {
+            logger.warn('Expense not found: %s', id);
             return res.status(404).json({ message: 'Expense not found' });
         }
+
+        logger.info('Updated expense: %s', id);
+
         res.status(200).json(updatedExpense);
     } catch (error) {
+        logger.error('Error updating expense: %s', error);
         next(error);
     }
 };
@@ -92,68 +109,18 @@ export const deleteExpense = async (req: Request, res: Response, next: NextFunct
     try {
         const id = req.params.id;
         await expenseService.deleteExpense(id);
+
+        logger.info('Deleted expense: %s', id);
+
         res.status(204).send();
     } catch (error) {
+        logger.error('Error deleting expense: %s', error);
         next(error);
     }
 };
-
-export const uploadReceipt = async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.file || !req.file.path) {
-        return res.status(400).send('No file uploaded.');
-    }
-
-    const filePath = req.file.path;
-
-    try {
-        const base64Image = encodeImage(filePath);
-        const expenseDetails = await processReceipt(base64Image);
-
-        if (expenseDetails) {
-            res.status(200).json({ message: 'Expense logged successfully.', expense: expenseDetails });
-        } else {
-            res.status(200).send('No expense logged.');
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Error processing the image.');
-    } finally {
-        fs.unlinkSync(filePath); // Delete the temporary file after processing
-    }
-};
-
-export const uploadAudio = async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.file || !req.file.path) {
-        return res.status(400).send('No file uploaded.');
-    }
-
-    // Retrieve the uploaded file from the request body
-    const uploadedFile = req.file;
-    // Determine the file type
-    const fileExtension = uploadedFile.mimetype ?uploadedFile.mimetype : null;
-
-    const audioPath = req.file.path;
-
-    try {
-        const transcription = await transcribeAudio(audioPath);
-
-        const expenseDetails = await analyzeTranscription(transcription);
-
-        if (expenseDetails) {
-            res.status(200).json({ message: 'Expense logged successfully.', expense: expenseDetails });
-        } else {
-            res.status(200).send('No expense logged.');
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Error processing the audio.');
-    } finally {
-        fs.unlinkSync(audioPath); // Elimina el archivo temporal después de procesarlo
-    }
-};
-
 export const uploadExpense = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file || !req.file.path) {
+        logger.warn('No file uploaded');
         return res.status(400).send('No file uploaded.');
     }
 
@@ -177,12 +144,14 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         }
 
         if (expenseDetails) {
+            logger.info('Logged expense from file upload');
             res.status(200).json({ message: 'Expense logged successfully.', expense: expenseDetails });
         } else {
-            res.status(200).send('No expense logged.');
+            logger.info('No expense logged from file upload');
+            res.status(422).json({ message: 'No expense logged.', details: 'The file was processed successfully, but no valid expense could be identified.' });
         }
     } catch (error) {
-        console.error(error);
+        logger.error('Error processing the file: %s', error);
         res.status(500).send('Error processing the file.');
     } finally {
         fs.unlinkSync(newFilePath);
