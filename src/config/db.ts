@@ -1,5 +1,5 @@
 import { Pool, types } from 'pg';
-import config from './config/config';
+import config from './config';
 
 // Create a new type parser for UUIDs
 const parseUUID = (val: string) => val;
@@ -12,5 +12,8 @@ export const pool = new Pool({
     host: config.dbHost,
     database: config.dbName,
     password: config.dbPassword,
-    port: config.dbPort
+    port: parseInt(process.env.DB_PORT || '5432'),
+    ssl: {
+        rejectUnauthorized: false
+    }
 });

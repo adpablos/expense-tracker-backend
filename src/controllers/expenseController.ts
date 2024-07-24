@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ExpenseService } from '../data/expenseService';
 import { Expense } from '../models/Expense';
-import { pool } from '../db';
+import { pool } from '../config/db';
 import { encodeImage } from '../utils/encodeImage';
 import { analyzeTranscription, processReceipt, transcribeAudio } from '../external/openaiService';
 import fs from 'fs';
