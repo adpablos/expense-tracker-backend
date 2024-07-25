@@ -1,7 +1,12 @@
 import express from 'express';
 import { getCategories, addCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
+import requestLogger from '../middleware/requestLogger';
+import responseLogger from "../middleware/responseLogger";
 
 const router = express.Router();
+
+router.use(requestLogger);
+router.use(responseLogger);
 
 /**
  * @swagger

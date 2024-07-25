@@ -61,8 +61,6 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
 
         const totalPages = Math.ceil(totalItems / limitNumber);
 
-        logger.info('Retrieved expenses', { startDate, endDate, page: pageNumber, limit: limitNumber, totalItems });
-
         res.json({
             page: pageNumber,
             totalPages,
@@ -82,8 +80,6 @@ export const addExpense = async (req: Request, res: Response, next: NextFunction
         const newExpense = new Expense(description, amount, category, subcategory, new Date(date));
         const createdExpense = await expenseService.createExpense(newExpense);
 
-        logger.info('Added new expense', { description, amount, category, subcategory, date });
-
         res.status(201).json(createdExpense);
     } catch (error) {
         logger.error('Error adding expense: %s', error);
@@ -100,8 +96,6 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
             return res.status(404).json({ message: 'Expense not found' });
         }
 
-        logger.info('Updated expense: %s', id);
-
         res.status(200).json(updatedExpense);
     } catch (error) {
         logger.error('Error updating expense: %s', error);
@@ -113,8 +107,6 @@ export const deleteExpense = async (req: Request, res: Response, next: NextFunct
     try {
         const id = req.params.id;
         await expenseService.deleteExpense(id);
-
-        logger.info('Deleted expense: %s', id);
 
         res.status(204).send();
     } catch (error) {
@@ -150,7 +142,7 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
             const base64Image = encodeImage(newFilePath);
             expenseDetails = await processReceipt(base64Image);
         } else if (req.file.mimetype.startsWith('audio')) {
-            // Convertir a WAV antes de transcribir
+            // Convert to WAV format
             wavFilePath = `${newFilePath}.wav`;
             await new Promise<void>((resolve, reject) => {
                 ffmpeg(newFilePath)
@@ -167,10 +159,8 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         }
 
         if (expenseDetails) {
-            logger.info('Logged expense from file upload');
             res.status(200).json({ message: 'Expense logged successfully.', expense: expenseDetails });
         } else {
-            logger.info('No expense logged from file upload');
             res.status(422).json({ message: 'No expense logged.', details: 'The file was processed successfully, but no valid expense could be identified.' });
         }
     } catch (error) {
