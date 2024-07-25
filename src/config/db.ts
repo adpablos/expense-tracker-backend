@@ -1,5 +1,6 @@
 import { Pool, types } from 'pg';
 import config from './config';
+import logger from '../config/logger';
 
 // Create a new type parser for UUIDs
 const parseUUID = (val: string) => val;
@@ -17,18 +18,18 @@ const pool = new Pool({
 });
 
 pool.on('connect', () => {
-    console.log('Connected to the database');
+    logger.info('Connected to the database');
 });
 
 pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
+    logger.error('Unexpected error on idle client', err);
     process.exit(-1);
 });
 
 pool.connect().then(() => {
-    console.log('Database connection established');
+    logger.info('Database connection established');
 }).catch((err) => {
-    console.error('Error connecting to the database', err);
+    logger.error('Error connecting to the database', err);
 });
 
 export default pool;

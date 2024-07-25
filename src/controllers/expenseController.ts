@@ -9,8 +9,12 @@ import path from 'path';
 import { AppError } from '../utils/AppError';
 import { parseISO, isValid } from 'date-fns';
 import logger from '../config/logger';
+import ffmpeg from 'fluent-ffmpeg';
+import { promisify } from 'util';
 
 const expenseService = new ExpenseService(pool);
+
+const ffprobe = promisify(ffmpeg.ffprobe);
 
 export const getExpenses = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -57,8 +61,6 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
 
         const totalPages = Math.ceil(totalItems / limitNumber);
 
-        logger.info('Retrieved expenses', { startDate, endDate, page: pageNumber, limit: limitNumber, totalItems });
-
         res.json({
             page: pageNumber,
             totalPages,
@@ -78,8 +80,6 @@ export const addExpense = async (req: Request, res: Response, next: NextFunction
         const newExpense = new Expense(description, amount, category, subcategory, new Date(date));
         const createdExpense = await expenseService.createExpense(newExpense);
 
-        logger.info('Added new expense', { description, amount, category, subcategory, date });
-
         res.status(201).json(createdExpense);
     } catch (error) {
         logger.error('Error adding expense: %s', error);
@@ -96,8 +96,6 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
             return res.status(404).json({ message: 'Expense not found' });
         }
 
-        logger.info('Updated expense: %s', id);
-
         res.status(200).json(updatedExpense);
     } catch (error) {
         logger.error('Error updating expense: %s', error);
@@ -110,14 +108,13 @@ export const deleteExpense = async (req: Request, res: Response, next: NextFunct
         const id = req.params.id;
         await expenseService.deleteExpense(id);
 
-        logger.info('Deleted expense: %s', id);
-
         res.status(204).send();
     } catch (error) {
         logger.error('Error deleting expense: %s', error);
         next(error);
     }
 };
+
 export const uploadExpense = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file || !req.file.path) {
         logger.warn('No file uploaded');
@@ -125,35 +122,61 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
     }
 
     const filePath = req.file.path;
-    const fileMimeType = req.file.mimetype;
     const fileExtension = path.extname(req.file.originalname);
     const newFilePath = `${filePath}${fileExtension}`;
+    let wavFilePath: string | null = null;
 
     try {
         fs.renameSync(filePath, newFilePath);
 
+        // Verify the file is a valid audio file
+        try {
+            await ffprobe(newFilePath);
+        } catch (error) {
+            logger.error('Invalid audio file:', error);
+            return res.status(400).send('Invalid audio file.');
+        }
+
         let expenseDetails;
-        if (fileMimeType.startsWith('image')) {
+        if (req.file.mimetype.startsWith('image')) {
             const base64Image = encodeImage(newFilePath);
             expenseDetails = await processReceipt(base64Image);
-        } else if (fileMimeType.startsWith('audio')) {
-            const transcription = await transcribeAudio(newFilePath);
+        } else if (req.file.mimetype.startsWith('audio')) {
+            // Convert to WAV format
+            wavFilePath = `${newFilePath}.wav`;
+            await new Promise<void>((resolve, reject) => {
+                ffmpeg(newFilePath)
+                    .toFormat('wav')
+                    .on('error', reject)
+                    .on('end', () => resolve())
+                    .save(wavFilePath!);
+            });
+
+            const transcription = await transcribeAudio(wavFilePath);
             expenseDetails = await analyzeTranscription(transcription);
         } else {
             throw new AppError('Unsupported file type', 400);
         }
 
         if (expenseDetails) {
-            logger.info('Logged expense from file upload');
             res.status(200).json({ message: 'Expense logged successfully.', expense: expenseDetails });
         } else {
-            logger.info('No expense logged from file upload');
             res.status(422).json({ message: 'No expense logged.', details: 'The file was processed successfully, but no valid expense could be identified.' });
         }
     } catch (error) {
         logger.error('Error processing the file: %s', error);
         res.status(500).send('Error processing the file.');
     } finally {
-        fs.unlinkSync(newFilePath);
+        // Cleaning up temporary files
+        try {
+            if (fs.existsSync(newFilePath)) {
+                fs.unlinkSync(newFilePath);
+            }
+            if (wavFilePath && fs.existsSync(wavFilePath)) {
+                fs.unlinkSync(wavFilePath);
+            }
+        } catch (error) {
+            logger.error('Error cleaning up temporary files:', error);
+        }
     }
 };
