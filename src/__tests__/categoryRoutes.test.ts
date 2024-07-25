@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import categoryRoutes from '../routes/categoryRoutes';
-import { pool } from '../config/db';
+import pool from '../config/db';
 
 const app = express();
 app.use(express.json());
