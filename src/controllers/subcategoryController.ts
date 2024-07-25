@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { SubcategoryService } from '../data/subcategoryService';
 import { Subcategory } from '../models/Subcategory';
-import { pool } from '../config/db';
+import pool from '../config/db';
 import logger from '../config/logger';
 
 const subcategoryService = new SubcategoryService(pool);
