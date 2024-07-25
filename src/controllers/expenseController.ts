@@ -9,8 +9,12 @@ import path from 'path';
 import { AppError } from '../utils/AppError';
 import { parseISO, isValid } from 'date-fns';
 import logger from '../config/logger';
+import ffmpeg from 'fluent-ffmpeg';
+import { promisify } from 'util';
 
 const expenseService = new ExpenseService(pool);
+
+const ffprobe = promisify(ffmpeg.ffprobe);
 
 export const getExpenses = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -118,6 +122,7 @@ export const deleteExpense = async (req: Request, res: Response, next: NextFunct
         next(error);
     }
 };
+
 export const uploadExpense = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file || !req.file.path) {
         logger.warn('No file uploaded');
@@ -125,19 +130,37 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
     }
 
     const filePath = req.file.path;
-    const fileMimeType = req.file.mimetype;
     const fileExtension = path.extname(req.file.originalname);
     const newFilePath = `${filePath}${fileExtension}`;
+    let wavFilePath: string | null = null;
 
     try {
         fs.renameSync(filePath, newFilePath);
 
+        // Verify the file is a valid audio file
+        try {
+            await ffprobe(newFilePath);
+        } catch (error) {
+            logger.error('Invalid audio file:', error);
+            return res.status(400).send('Invalid audio file.');
+        }
+
         let expenseDetails;
-        if (fileMimeType.startsWith('image')) {
+        if (req.file.mimetype.startsWith('image')) {
             const base64Image = encodeImage(newFilePath);
             expenseDetails = await processReceipt(base64Image);
-        } else if (fileMimeType.startsWith('audio')) {
-            const transcription = await transcribeAudio(newFilePath);
+        } else if (req.file.mimetype.startsWith('audio')) {
+            // Convertir a WAV antes de transcribir
+            wavFilePath = `${newFilePath}.wav`;
+            await new Promise<void>((resolve, reject) => {
+                ffmpeg(newFilePath)
+                    .toFormat('wav')
+                    .on('error', reject)
+                    .on('end', () => resolve())
+                    .save(wavFilePath!);
+            });
+
+            const transcription = await transcribeAudio(wavFilePath);
             expenseDetails = await analyzeTranscription(transcription);
         } else {
             throw new AppError('Unsupported file type', 400);
@@ -154,6 +177,16 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         logger.error('Error processing the file: %s', error);
         res.status(500).send('Error processing the file.');
     } finally {
-        fs.unlinkSync(newFilePath);
+        // Cleaning up temporary files
+        try {
+            if (fs.existsSync(newFilePath)) {
+                fs.unlinkSync(newFilePath);
+            }
+            if (wavFilePath && fs.existsSync(wavFilePath)) {
+                fs.unlinkSync(wavFilePath);
+            }
+        } catch (error) {
+            logger.error('Error cleaning up temporary files:', error);
+        }
     }
 };

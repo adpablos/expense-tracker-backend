@@ -102,6 +102,10 @@ export const processReceipt = async (base64Image: string) => {
 };
 
 export const transcribeAudio = async (filePath: string): Promise<string> => {
+    if (!fs.existsSync(filePath) || fs.statSync(filePath).size === 0) {
+        throw new Error('Invalid or empty audio file');
+    }
+
     const transcription = await clientOpenAI.audio.transcriptions.create({
         model: "whisper-1",
         file: fs.createReadStream(filePath),
