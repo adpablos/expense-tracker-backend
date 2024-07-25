@@ -2,7 +2,7 @@ import clientOpenAI from '../config/openaiConfig';
 import {Expense} from "../models/Expense";
 import { ExpenseService } from '../data/expenseService';
 import { CategoryHierarchyService } from "../data/categoryHierarchyService";
-import {pool} from "../config/db";
+import pool from '../config/db';
 import fs from "fs";
 import OpenAI from "openai";
 
