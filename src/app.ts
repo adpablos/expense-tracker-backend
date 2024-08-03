@@ -3,8 +3,8 @@ import cors from 'cors';
 import expenseRoutes from './routes/expenseRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import subcategoryRoutes from './routes/subcategoryRoutes';
-import { errorHandler } from './middleware/errorHandler';
-import { AppError } from './utils/AppError';
+import {errorHandler} from './middleware/errorHandler';
+import {AppError} from './utils/AppError';
 import setupSwagger from "./swagger";
 
 const app = express();

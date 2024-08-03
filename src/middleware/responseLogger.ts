@@ -1,5 +1,5 @@
 // src/middleware/responseLogger.ts
-import { Request, Response, NextFunction } from 'express';
+import {NextFunction, Request, Response} from 'express';
 import logger from '../config/logger';
 
 const responseLogger = (req: Request, res: Response, next: NextFunction) => {

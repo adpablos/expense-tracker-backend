@@ -1,11 +1,5 @@
 import express from 'express';
-import {
-    getExpenses,
-    addExpense,
-    updateExpense,
-    deleteExpense,
-    uploadExpense
-} from '../controllers/expenseController';
+import {addExpense, deleteExpense, getExpenses, updateExpense, uploadExpense} from '../controllers/expenseController';
 import multer from 'multer';
 import path from "path";
 import {AppError} from "../utils/AppError";
@@ -15,7 +9,7 @@ import responseLogger from "../middleware/responseLogger";
 const router = express.Router();
 const upload = multer({
     dest: 'uploads/',
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max file size
+    limits: {fileSize: 5 * 1024 * 1024}, // 5MB max file size
     fileFilter: (req, file, cb) => {
         const fileTypes = /jpeg|jpg|png|webp|gif|flac|m4a|mp3|mp4|mpeg|mpga|oga|ogg|wav|webm/;
         const mimetype = fileTypes.test(file.mimetype);

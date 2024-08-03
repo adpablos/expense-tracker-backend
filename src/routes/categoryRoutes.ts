@@ -1,5 +1,5 @@
 import express from 'express';
-import { getCategories, addCategory, updateCategory, deleteCategory } from '../controllers/categoryController';
+import {addCategory, deleteCategory, getCategories, updateCategory} from '../controllers/categoryController';
 import requestLogger from '../middleware/requestLogger';
 import responseLogger from "../middleware/responseLogger";
 

@@ -1,5 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
-import { Application } from 'express';
+import {Application} from 'express';
 import swaggerUi from 'swagger-ui-express';
 
 const options = {
@@ -77,7 +77,6 @@ const options = {
     },
     apis: ['./src/routes/*.ts'],
 };
-
 
 
 const specs = swaggerJsdoc(options);
