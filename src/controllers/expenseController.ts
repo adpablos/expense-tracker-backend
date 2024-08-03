@@ -1,26 +1,27 @@
+import fs from 'fs';
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
+import ffprobePath from '@ffprobe-installer/ffprobe';
+import clientOpenAI from '../config/openaiConfig';
+import logger from '../config/logger';
 import { Request, Response, NextFunction } from 'express';
 import { ExpenseService } from '../data/expenseService';
 import { Expense } from '../models/Expense';
 import pool from '../config/db';
 import { encodeImage } from '../utils/encodeImage';
 import { analyzeTranscription, processReceipt, transcribeAudio } from '../external/openaiService';
-import fs from 'fs';
 import path from 'path';
 import { AppError } from '../utils/AppError';
 import { parseISO, isValid } from 'date-fns';
-import logger from '../config/logger';
-import ffmpeg from 'fluent-ffmpeg';
-import ffmpegPath from 'ffmpeg-static';
 import { promisify } from 'util';
 
 const expenseService = new ExpenseService(pool);
 
-// Be sure to have ffmpeg-static installed as a dependency
 if (!ffmpegPath) {
     throw new Error('FFmpeg path is null. Ensure ffmpeg-static is installed correctly.');
 }
-
 ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath.path);
 
 const ffprobe = promisify(ffmpeg.ffprobe);
 
