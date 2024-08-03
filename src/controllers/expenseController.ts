@@ -2,18 +2,17 @@ import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobePath from '@ffprobe-installer/ffprobe';
-import clientOpenAI from '../config/openaiConfig';
 import logger from '../config/logger';
-import { Request, Response, NextFunction } from 'express';
-import { ExpenseService } from '../data/expenseService';
-import { Expense } from '../models/Expense';
+import {NextFunction, Request, Response} from 'express';
+import {ExpenseService} from '../data/expenseService';
+import {Expense} from '../models/Expense';
 import pool from '../config/db';
-import { encodeImage } from '../utils/encodeImage';
-import { analyzeTranscription, processReceipt, transcribeAudio } from '../external/openaiService';
+import {encodeImage} from '../utils/encodeImage';
+import {analyzeTranscription, processReceipt, transcribeAudio} from '../external/openaiService';
 import path from 'path';
-import { AppError } from '../utils/AppError';
-import { parseISO, isValid } from 'date-fns';
-import { promisify } from 'util';
+import {AppError} from '../utils/AppError';
+import {isValid, parseISO} from 'date-fns';
+import {promisify} from 'util';
 
 const expenseService = new ExpenseService(pool);
 
@@ -27,7 +26,7 @@ const ffprobe = promisify(ffmpeg.ffprobe);
 
 export const getExpenses = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { startDate, endDate, page = 1, limit = 10 } = req.query;
+        const {startDate, endDate, page = 1, limit = 10} = req.query;
 
         // Date validation
         let startDateParsed: Date | undefined;
@@ -37,7 +36,7 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
             startDateParsed = parseISO(startDate as string);
             if (!isValid(startDateParsed)) {
                 logger.warn('Invalid startDate format: %s', startDate);
-                return res.status(400).json({ message: 'Invalid startDate format. Expected format: YYYY-MM-DD' });
+                return res.status(400).json({message: 'Invalid startDate format. Expected format: YYYY-MM-DD'});
             }
         }
 
@@ -45,7 +44,7 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
             endDateParsed = parseISO(endDate as string);
             if (!isValid(endDateParsed)) {
                 logger.warn('Invalid endDate format: %s', endDate);
-                return res.status(400).json({ message: 'Invalid endDate format. Expected format: YYYY-MM-DD' });
+                return res.status(400).json({message: 'Invalid endDate format. Expected format: YYYY-MM-DD'});
             }
         }
 
@@ -54,14 +53,14 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
         const limitNumber = parseInt(limit as string, 10);
         if (isNaN(pageNumber) || pageNumber < 1) {
             logger.warn('Invalid page number: %s', page);
-            return res.status(400).json({ message: 'Invalid page number. Must be a positive integer.' });
+            return res.status(400).json({message: 'Invalid page number. Must be a positive integer.'});
         }
         if (isNaN(limitNumber) || limitNumber < 1) {
             logger.warn('Invalid limit number: %s', limit);
-            return res.status(400).json({ message: 'Invalid limit number. Must be a positive integer.' });
+            return res.status(400).json({message: 'Invalid limit number. Must be a positive integer.'});
         }
 
-        const { expenses, totalItems } = await expenseService.getExpenses({
+        const {expenses, totalItems} = await expenseService.getExpenses({
             startDate: startDateParsed,
             endDate: endDateParsed,
             page: pageNumber,
@@ -85,7 +84,7 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
 
 export const addExpense = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { description, amount, category, subcategory, date } = req.body;
+        const {description, amount, category, subcategory, date} = req.body;
         const newExpense = new Expense(description, amount, category, subcategory, new Date(date));
         const createdExpense = await expenseService.createExpense(newExpense);
 
@@ -102,7 +101,7 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
         const updatedExpense = await expenseService.updateExpense(id, req.body);
         if (!updatedExpense) {
             logger.warn('Expense not found: %s', id);
-            return res.status(404).json({ message: 'Expense not found' });
+            return res.status(404).json({message: 'Expense not found'});
         }
 
         res.status(200).json(updatedExpense);
@@ -168,9 +167,12 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         }
 
         if (expenseDetails) {
-            res.status(200).json({ message: 'Expense logged successfully.', expense: expenseDetails });
+            res.status(200).json({message: 'Expense logged successfully.', expense: expenseDetails});
         } else {
-            res.status(422).json({ message: 'No expense logged.', details: 'The file was processed successfully, but no valid expense could be identified.' });
+            res.status(422).json({
+                message: 'No expense logged.',
+                details: 'The file was processed successfully, but no valid expense could be identified.'
+            });
         }
     } catch (error) {
         logger.error('Error processing the file: %s', error);

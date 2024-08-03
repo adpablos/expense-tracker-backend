@@ -1,4 +1,4 @@
-import { Pool, types } from 'pg';
+import {Pool, types} from 'pg';
 import config from './config';
 import logger from '../config/logger';
 
@@ -14,7 +14,7 @@ const pool = new Pool({
     database: config.dbDatabase,
     password: config.dbPassword,
     port: config.dbPort,
-    ssl: config.dbSSL ? { rejectUnauthorized: false } : false
+    ssl: config.dbSSL ? {rejectUnauthorized: false} : false
 });
 
 pool.on('connect', () => {

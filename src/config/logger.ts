@@ -1,5 +1,6 @@
 // src/utils/logger.ts
-import { createLogger, format, transports } from 'winston';
+// Configure colors for each log level
+import winston, {createLogger, format, transports} from 'winston';
 
 const colors = {
     error: 'red',
@@ -8,7 +9,7 @@ const colors = {
     debug: 'blue'
 };
 
-const customFormat = format.printf(({ timestamp, level, message, ...metadata }) => {
+const customFormat = format.printf(({timestamp, level, message, ...metadata}) => {
     const coloredLevel = format.colorize().colorize(level, level.toUpperCase());
     let msg = `${timestamp} ${coloredLevel}: ${message}`;
     if (Object.keys(metadata).length > 1) {
@@ -23,20 +24,18 @@ const logger = createLogger({
         format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss'
         }),
-        format.errors({ stack: true }),
+        format.errors({stack: true}),
         format.splat(),
         customFormat
     ),
-    defaultMeta: { service: 'expense-tracker' },
+    defaultMeta: {service: 'expense-tracker'},
     transports: [
         new transports.Console(),
-        new transports.File({ filename: 'logs/error.log', level: 'error' }),
-        new transports.File({ filename: 'logs/combined.log' })
+        new transports.File({filename: 'logs/error.log', level: 'error'}),
+        new transports.File({filename: 'logs/combined.log'})
     ]
 });
 
-// Configure colors for each log level
-import winston from 'winston';
 winston.addColors(colors);
 
 export default logger;

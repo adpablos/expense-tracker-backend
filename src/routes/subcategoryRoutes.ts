@@ -1,5 +1,10 @@
 import express from 'express';
-import { getSubcategories, addSubcategory, updateSubcategory, deleteSubcategory } from '../controllers/subcategoryController';
+import {
+    addSubcategory,
+    deleteSubcategory,
+    getSubcategories,
+    updateSubcategory
+} from '../controllers/subcategoryController';
 import requestLogger from "../middleware/requestLogger";
 import responseLogger from "../middleware/responseLogger";
 

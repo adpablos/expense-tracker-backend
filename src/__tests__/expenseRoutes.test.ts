@@ -1,12 +1,12 @@
 import request from 'supertest';
-import express, { Application } from 'express';
+import express, {Application} from 'express';
 import expenseRoutes from '../routes/expenseRoutes';
 import multer from 'multer';
-import { ExpenseService } from '../data/expenseService';
-import { processReceipt } from '../external/openaiService';
+import {ExpenseService} from '../data/expenseService';
+import {processReceipt} from '../external/openaiService';
 
 const app: Application = express();
-multer({ dest: 'uploads/' });
+multer({dest: 'uploads/'});
 app.use(express.json());
 app.use('/api/expenses', expenseRoutes);
 
@@ -63,8 +63,8 @@ describe('Expense Routes', () => {
 
     it('should get expenses filtered by date range', async () => {
         const mockExpenses = [
-            { ...mockExpense, id: '1', date: '2024-07-21' },
-            { ...mockExpense, id: '2', date: '2024-07-22' },
+            {...mockExpense, id: '1', date: '2024-07-21'},
+            {...mockExpense, id: '2', date: '2024-07-22'},
         ];
         ExpenseService.prototype.getExpenses = jest.fn().mockResolvedValue({
             expenses: mockExpenses,
@@ -73,7 +73,7 @@ describe('Expense Routes', () => {
 
         const res = await request(app)
             .get('/api/expenses')
-            .query({ startDate: '2024-07-20', endDate: '2024-07-22' });
+            .query({startDate: '2024-07-20', endDate: '2024-07-22'});
 
         expect(res.statusCode).toEqual(200);
         expect(Array.isArray(res.body.expenses)).toBeTruthy();
@@ -81,7 +81,7 @@ describe('Expense Routes', () => {
     });
 
     it('should get expenses with pagination', async () => {
-        const mockExpenses = Array.from({ length: 15 }, (_, i) => ({
+        const mockExpenses = Array.from({length: 15}, (_, i) => ({
             ...mockExpense,
             id: `${i + 1}`,
             date: `2024-07-${21 + i}`,
@@ -93,7 +93,7 @@ describe('Expense Routes', () => {
 
         const res = await request(app)
             .get('/api/expenses')
-            .query({ page: 1, limit: 10 });
+            .query({page: 1, limit: 10});
 
         expect(res.statusCode).toEqual(200);
         expect(Array.isArray(res.body.expenses)).toBeTruthy();
@@ -106,7 +106,7 @@ describe('Expense Routes', () => {
     it('should return 400 for invalid date format', async () => {
         const res = await request(app)
             .get('/api/expenses')
-            .query({ startDate: 'invalid-date' });
+            .query({startDate: 'invalid-date'});
 
         expect(res.statusCode).toEqual(400);
         expect(res.body.message).toBe('Invalid startDate format. Expected format: YYYY-MM-DD');
@@ -115,7 +115,7 @@ describe('Expense Routes', () => {
     it('should return 400 for invalid page number', async () => {
         const res = await request(app)
             .get('/api/expenses')
-            .query({ page: 'invalid-page' });
+            .query({page: 'invalid-page'});
 
         expect(res.statusCode).toEqual(400);
         expect(res.body.message).toBe('Invalid page number. Must be a positive integer.');

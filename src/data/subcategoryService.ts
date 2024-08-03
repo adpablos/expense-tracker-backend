@@ -1,6 +1,6 @@
-import { Pool } from 'pg';
-import { Subcategory } from '../models/Subcategory';
-import { AppError } from '../utils/AppError';
+import {Pool} from 'pg';
+import {Subcategory} from '../models/Subcategory';
+import {AppError} from '../utils/AppError';
 import logger from '../config/logger';
 
 export class SubcategoryService {
@@ -15,20 +15,20 @@ export class SubcategoryService {
         try {
             const result = await this.db.query('SELECT * FROM subcategories');
             const subcategories = result.rows.map(Subcategory.fromDatabase);
-            logger.info('Fetched subcategories', { count: subcategories.length });
+            logger.info('Fetched subcategories', {count: subcategories.length});
             return subcategories;
         } catch (error) {
-            logger.error('Error fetching subcategories', { error: error });
+            logger.error('Error fetching subcategories', {error: error});
             throw new AppError('Error fetching subcategories', 500);
         }
     }
 
     async createSubcategory(subcategory: Subcategory): Promise<Subcategory> {
-        logger.info('Creating subcategory', { subcategory: subcategory.name });
+        logger.info('Creating subcategory', {subcategory: subcategory.name});
 
         const errors = subcategory.validate();
         if (errors.length > 0) {
-            logger.warn('Invalid subcategory data', { errors });
+            logger.warn('Invalid subcategory data', {errors});
             throw new AppError(`Invalid subcategory: ${errors.join(', ')}`, 400);
         }
 
@@ -39,46 +39,46 @@ export class SubcategoryService {
                 [dbSubcategory.id, dbSubcategory.name, dbSubcategory.category_id]
             );
             const createdSubcategory = Subcategory.fromDatabase(result.rows[0]);
-            logger.info('Created subcategory', { subcategory: createdSubcategory });
+            logger.info('Created subcategory', {subcategory: createdSubcategory});
             return createdSubcategory;
         } catch (error) {
-            logger.error('Error creating subcategory', { error: error });
+            logger.error('Error creating subcategory', {error: error});
             throw new AppError('Error creating subcategory', 500);
         }
     }
 
     async updateSubcategory(id: string, name: string, categoryId: string): Promise<Subcategory | null> {
-        logger.info('Updating subcategory', { id, name, categoryId });
+        logger.info('Updating subcategory', {id, name, categoryId});
         try {
             const result = await this.db.query(
                 'UPDATE subcategories SET name = $1, category_id = $2 WHERE id = $3 RETURNING *',
                 [name, categoryId, id]
             );
             if (result.rows.length === 0) {
-                logger.warn('Subcategory not found', { id });
+                logger.warn('Subcategory not found', {id});
                 return null;
             }
             const updatedSubcategory = Subcategory.fromDatabase(result.rows[0]);
-            logger.info('Updated subcategory', { subcategory: updatedSubcategory });
+            logger.info('Updated subcategory', {subcategory: updatedSubcategory});
             return updatedSubcategory;
         } catch (error) {
-            logger.error('Error updating subcategory', { error: error });
+            logger.error('Error updating subcategory', {error: error});
             throw new AppError('Error updating subcategory', 500);
         }
     }
 
     async deleteSubcategory(id: string): Promise<number | null> {
-        logger.info('Deleting subcategory', { id });
+        logger.info('Deleting subcategory', {id});
         try {
             const result = await this.db.query('DELETE FROM subcategories WHERE id = $1', [id]);
             if (result.rowCount === 0) {
-                logger.warn('Subcategory not found', { id });
+                logger.warn('Subcategory not found', {id});
                 return null;
             }
-            logger.info('Deleted subcategory', { id, rowCount: result.rowCount });
+            logger.info('Deleted subcategory', {id, rowCount: result.rowCount});
             return result.rowCount;
         } catch (error) {
-            logger.error('Error deleting subcategory', { error: error });
+            logger.error('Error deleting subcategory', {error: error});
             throw new AppError('Error deleting subcategory', 500);
         }
     }

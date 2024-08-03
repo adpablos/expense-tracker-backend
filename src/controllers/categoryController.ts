@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { CategoryService } from '../data/categoryService';
-import { Category } from '../models/Category';
+import {NextFunction, Request, Response} from 'express';
+import {CategoryService} from '../data/categoryService';
+import {Category} from '../models/Category';
 import pool from '../config/db';
 import logger from '../config/logger';
 
@@ -18,7 +18,7 @@ export const getCategories = async (req: Request, res: Response, next: NextFunct
 
 export const addCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { name } = req.body;
+        const {name} = req.body;
         const newCategory = new Category(name);
         const createdCategory = await categoryService.createCategory(newCategory);
         res.status(201).json(createdCategory);
@@ -30,12 +30,12 @@ export const addCategory = async (req: Request, res: Response, next: NextFunctio
 
 export const updateCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
-        const { name } = req.body;
+        const {id} = req.params;
+        const {name} = req.body;
         const updatedCategory = await categoryService.updateCategory(id, name);
         if (!updatedCategory) {
             logger.warn('Category not found: %s', id);
-            return res.status(404).json({ message: 'Category not found' });
+            return res.status(404).json({message: 'Category not found'});
         }
         res.json(updatedCategory);
     } catch (error) {
@@ -46,11 +46,11 @@ export const updateCategory = async (req: Request, res: Response, next: NextFunc
 
 export const deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
+        const {id} = req.params;
         const result = await categoryService.deleteCategory(id);
         if (result === 0) {
             logger.warn('Category not found: %s', id);
-            return res.status(404).json({ message: 'Category not found' });
+            return res.status(404).json({message: 'Category not found'});
         }
         res.status(204).send();
     } catch (error) {

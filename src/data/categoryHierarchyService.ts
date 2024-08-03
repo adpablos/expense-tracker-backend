@@ -1,6 +1,6 @@
-import { Pool } from 'pg';
-import { CategoryService } from './categoryService';
-import { SubcategoryService } from './subcategoryService';
+import {Pool} from 'pg';
+import {CategoryService} from './categoryService';
+import {SubcategoryService} from './subcategoryService';
 import logger from '../config/logger';
 
 export class CategoryHierarchyService {
@@ -18,10 +18,10 @@ export class CategoryHierarchyService {
         logger.info('Fetching categories and subcategories');
         try {
             const categories = await this.categoryService.getAllCategories();
-            logger.info('Fetched categories', { count: categories.length });
+            logger.info('Fetched categories', {count: categories.length});
 
             const subcategories = await this.subcategoryService.getAllSubcategories();
-            logger.info('Fetched subcategories', { count: subcategories.length });
+            logger.info('Fetched subcategories', {count: subcategories.length});
 
             const categoriesMap: { [key: string]: string[] } = {};
 
@@ -39,7 +39,7 @@ export class CategoryHierarchyService {
             logger.info('Formatted categories and subcategories string');
             return categoriesString;
         } catch (error) {
-            logger.error('Error fetching categories and subcategories', { error: error });
+            logger.error('Error fetching categories and subcategories', {error: error});
             throw new Error('Error fetching categories and subcategories');
         }
     }
