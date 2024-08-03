@@ -10,9 +10,17 @@ import { AppError } from '../utils/AppError';
 import { parseISO, isValid } from 'date-fns';
 import logger from '../config/logger';
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegPath from 'ffmpeg-static';
 import { promisify } from 'util';
 
 const expenseService = new ExpenseService(pool);
+
+// Be sure to have ffmpeg-static installed as a dependency
+if (!ffmpegPath) {
+    throw new Error('FFmpeg path is null. Ensure ffmpeg-static is installed correctly.');
+}
+
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 const ffprobe = promisify(ffmpeg.ffprobe);
 
