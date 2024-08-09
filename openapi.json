@@ -3,7 +3,95 @@
   "info": {
     "title": "Expense Tracker API",
     "version": "1.0.0",
-    "description": "API for managing expenses, categories, and subcategories"
+    "description": "The Expense Tracker API provides endpoints for managing your personal finances. With this API, you can manage expenses, categories, and subcategories, as well as upload receipts and audio logs. A key feature of the API is the use of AI to process uploaded documents (images or audio files) to automatically recognize and log expenses, enhancing the user experience by simplifying data entry."
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The unique identifier for the category"
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the category"
+          }
+        }
+      },
+      "Subcategory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The unique identifier for the subcategory"
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the subcategory"
+          },
+          "categoryId": {
+            "type": "string",
+            "description": "The ID of the category this subcategory belongs to"
+          }
+        }
+      },
+      "Expense": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The unique identifier for the expense",
+            "example": "1d311a67-3bf8-438b-a296-4e8b730268ae"
+          },
+          "description": {
+            "type": "string",
+            "description": "A brief description of the expense",
+            "example": "Compra en supermercado"
+          },
+          "amount": {
+            "type": "number",
+            "description": "The monetary amount of the expense",
+            "example": 75
+          },
+          "category": {
+            "type": "string",
+            "description": "The category under which this expense falls",
+            "example": "Alimentación"
+          },
+          "subcategory": {
+            "type": "string",
+            "description": "The subcategory under which this expense falls",
+            "example": "Supermercado"
+          },
+          "expenseDatetime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the expense was incurred",
+            "example": "2024-08-09T13:24:00-04:00"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the expense record was created",
+            "example": "2024-08-09T14:30:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the expense record was last updated",
+            "example": "2024-08-09T14:45:00Z"
+          }
+        },
+        "required": [
+          "description",
+          "amount",
+          "category",
+          "expenseDatetime"
+        ]
+      }
+    }
   },
   "paths": {
     "/api/categories": {
@@ -158,18 +246,52 @@
             "name": "startDate",
             "schema": {
               "type": "string",
-              "format": "date"
+              "format": "date-time",
+              "example": "2024-08-09T00:00:00Z"
             },
-            "description": "The start date to filter expenses (YYYY-MM-DD)."
+            "description": "The start date to filter expenses (ISO 8601 format)."
           },
           {
             "in": "query",
             "name": "endDate",
             "schema": {
               "type": "string",
-              "format": "date"
+              "format": "date-time",
+              "example": "2024-08-09T23:59:59Z"
             },
-            "description": "The end date to filter expenses (YYYY-MM-DD)."
+            "description": "The end date to filter expenses (ISO 8601 format)."
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by category."
+          },
+          {
+            "in": "query",
+            "name": "subcategory",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by subcategory."
+          },
+          {
+            "in": "query",
+            "name": "amount",
+            "schema": {
+              "type": "number"
+            },
+            "description": "Filter by amount."
+          },
+          {
+            "in": "query",
+            "name": "description",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by description (partial match)."
           },
           {
             "in": "query",
@@ -229,45 +351,38 @@
         }
       },
       "post": {
+        "summary": "Add a new expense",
+        "description": "Adds a new expense to the system with the given details.",
         "tags": [
           "Expenses"
         ],
-        "summary": "Create a new expense",
-        "description": "Record a new expense entry. Each expense must include a description, amount, category, subcategory, and date.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "description",
-                  "amount",
-                  "category",
-                  "subcategory",
-                  "date"
-                ],
                 "properties": {
                   "description": {
                     "type": "string",
-                    "description": "A brief description of the expense."
+                    "example": "Compra en supermercado"
                   },
                   "amount": {
                     "type": "number",
-                    "description": "The monetary amount of the expense."
+                    "example": 75
                   },
                   "category": {
                     "type": "string",
-                    "description": "The category under which this expense falls."
+                    "example": "Alimentación"
                   },
                   "subcategory": {
                     "type": "string",
-                    "description": "The subcategory under which this expense falls."
+                    "example": "Supermercado"
                   },
-                  "date": {
+                  "expenseDatetime": {
                     "type": "string",
-                    "format": "date",
-                    "description": "The date when the expense was incurred."
+                    "format": "date-time",
+                    "example": "2024-08-09T13:24:00-04:00"
                   }
                 }
               }
@@ -276,11 +391,72 @@
         },
         "responses": {
           "201": {
-            "description": "The expense was successfully created.",
+            "description": "Expense created successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Expense"
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "number"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "subcategory": {
+                      "type": "string"
+                    },
+                    "expenseDatetime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as '2024-08-09T14:30:00Z' or '2024-08-09T14:30:00-04:00'."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Error creating expense"
+                    }
+                  }
                 }
               }
             }
@@ -290,20 +466,20 @@
     },
     "/api/expenses/{id}": {
       "put": {
+        "summary": "Update an existing expense",
+        "description": "Updates the details of an existing expense by its ID.",
         "tags": [
           "Expenses"
         ],
-        "summary": "Update an existing expense",
-        "description": "Modify the details of an existing expense by its ID. You can change the description, amount, category, subcategory, and date.",
         "parameters": [
           {
             "in": "path",
             "name": "id",
             "required": true,
+            "description": "The unique ID of the expense to update.",
             "schema": {
               "type": "string"
-            },
-            "description": "The unique ID of the expense."
+            }
           }
         ],
         "requestBody": {
@@ -315,24 +491,24 @@
                 "properties": {
                   "description": {
                     "type": "string",
-                    "description": "A brief description of the expense."
+                    "example": "Compra en supermercado"
                   },
                   "amount": {
                     "type": "number",
-                    "description": "The monetary amount of the expense."
+                    "example": 75
                   },
                   "category": {
                     "type": "string",
-                    "description": "The category under which this expense falls."
+                    "example": "Alimentación"
                   },
                   "subcategory": {
                     "type": "string",
-                    "description": "The subcategory under which this expense falls."
+                    "example": "Supermercado"
                   },
-                  "date": {
+                  "expense_datetime": {
                     "type": "string",
-                    "format": "date",
-                    "description": "The date when the expense was incurred."
+                    "format": "date-time",
+                    "example": "2024-08-09T13:24:00-04:00"
                   }
                 }
               }
@@ -341,17 +517,91 @@
         },
         "responses": {
           "200": {
-            "description": "The expense was successfully updated.",
+            "description": "Expense updated successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Expense"
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "number"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "subcategory": {
+                      "type": "string"
+                    },
+                    "expense_datetime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as '2024-08-09T14:30:00Z' or '2024-08-09T14:30:00-04:00'."
+                    }
+                  }
                 }
               }
             }
           },
           "404": {
-            "description": "The expense with the specified ID was not found."
+            "description": "Expense not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Expense not found"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Error updating expense"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -422,7 +672,6 @@
                       "example": "Expense logged successfully by AI."
                     },
                     "expense": {
-                      "type": "object",
                       "$ref": "#/components/schemas/Expense"
                     }
                   }
@@ -588,7 +837,6 @@
       }
     }
   },
-  "components": {},
   "tags": [
     {
       "name": "Categories",
