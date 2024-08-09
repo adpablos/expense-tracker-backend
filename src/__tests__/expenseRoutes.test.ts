@@ -1,12 +1,12 @@
 import request from 'supertest';
-import express, {Application} from 'express';
+import express, { Application } from 'express';
 import expenseRoutes from '../routes/expenseRoutes';
 import multer from 'multer';
-import {ExpenseService} from '../data/expenseService';
-import {processReceipt} from '../external/openaiService';
+import { ExpenseService } from '../data/expenseService';
+import { processReceipt } from '../external/openaiService';
 
 const app: Application = express();
-multer({dest: 'uploads/'});
+multer({ dest: 'uploads/' });
 app.use(express.json());
 app.use('/api/expenses', expenseRoutes);
 
@@ -19,7 +19,7 @@ const mockExpense = {
     amount: 100.00,
     category: 'Casa',
     subcategory: 'Mantenimiento',
-    date: '2024-07-21'
+    expenseDatetime: '2024-07-21T00:00:00Z' // Actualización para usar el formato ISO 8601
 };
 
 describe('Expense Routes', () => {
@@ -37,7 +37,7 @@ describe('Expense Routes', () => {
                 amount: 100.00,
                 category: 'Casa',
                 subcategory: 'Mantenimiento',
-                date: '2024-07-21'
+                expenseDatetime: '2024-08-09T13:24:00-04:00'  // Formato ISO 8601
             });
 
         expect(res.statusCode).toEqual(201);
@@ -63,8 +63,8 @@ describe('Expense Routes', () => {
 
     it('should get expenses filtered by date range', async () => {
         const mockExpenses = [
-            {...mockExpense, id: '1', date: '2024-07-21'},
-            {...mockExpense, id: '2', date: '2024-07-22'},
+            { ...mockExpense, id: '1', expenseDatetime: '2024-07-21T00:00:00Z' },
+            { ...mockExpense, id: '2', expenseDatetime: '2024-07-22T00:00:00Z' },
         ];
         ExpenseService.prototype.getExpenses = jest.fn().mockResolvedValue({
             expenses: mockExpenses,
@@ -73,7 +73,7 @@ describe('Expense Routes', () => {
 
         const res = await request(app)
             .get('/api/expenses')
-            .query({startDate: '2024-07-20', endDate: '2024-07-22'});
+            .query({ startDate: '2024-07-20T00:00:00Z', endDate: '2024-07-22T23:59:59Z' });  // Fechas en formato ISO 8601
 
         expect(res.statusCode).toEqual(200);
         expect(Array.isArray(res.body.expenses)).toBeTruthy();
@@ -81,10 +81,10 @@ describe('Expense Routes', () => {
     });
 
     it('should get expenses with pagination', async () => {
-        const mockExpenses = Array.from({length: 15}, (_, i) => ({
+        const mockExpenses = Array.from({ length: 15 }, (_, i) => ({
             ...mockExpense,
             id: `${i + 1}`,
-            date: `2024-07-${21 + i}`,
+            expenseDatetime: `2024-07-${21 + i}T00:00:00Z`,  // Fechas en formato ISO 8601
         }));
         ExpenseService.prototype.getExpenses = jest.fn().mockResolvedValue({
             expenses: mockExpenses.slice(0, 10),
@@ -93,7 +93,7 @@ describe('Expense Routes', () => {
 
         const res = await request(app)
             .get('/api/expenses')
-            .query({page: 1, limit: 10});
+            .query({ page: 1, limit: 10 });
 
         expect(res.statusCode).toEqual(200);
         expect(Array.isArray(res.body.expenses)).toBeTruthy();
@@ -106,16 +106,16 @@ describe('Expense Routes', () => {
     it('should return 400 for invalid date format', async () => {
         const res = await request(app)
             .get('/api/expenses')
-            .query({startDate: 'invalid-date'});
+            .query({ startDate: 'invalid-date' });
 
         expect(res.statusCode).toEqual(400);
-        expect(res.body.message).toBe('Invalid startDate format. Expected format: YYYY-MM-DD');
+        expect(res.body.message).toBe('Invalid startDate format. Please provide the date in ISO 8601 format, such as "2024-08-09T00:00:00Z".');
     });
 
     it('should return 400 for invalid page number', async () => {
         const res = await request(app)
             .get('/api/expenses')
-            .query({page: 'invalid-page'});
+            .query({ page: 'invalid-page' });
 
         expect(res.statusCode).toEqual(400);
         expect(res.body.message).toBe('Invalid page number. Must be a positive integer.');
@@ -124,7 +124,8 @@ describe('Expense Routes', () => {
     it('should update an existing expense', async () => {
         ExpenseService.prototype.updateExpense = jest.fn().mockResolvedValue({
             ...mockExpense,
-            description: 'Updated test expense'
+            description: 'Updated test expense',
+            expenseDatetime: '2024-07-21T00:00:00Z'
         });
 
         const res = await request(app)
@@ -134,7 +135,7 @@ describe('Expense Routes', () => {
                 amount: 150.00,
                 category: 'Casa',
                 subcategory: 'Mantenimiento',
-                date: '2024-07-21'
+                expenseDatetime: '2024-07-21T00:00:00Z'  // Formato ISO 8601
             });
 
         expect(res.statusCode).toEqual(200);
@@ -152,7 +153,7 @@ describe('Expense Routes', () => {
                 amount: 150.00,
                 category: 'Casa',
                 subcategory: 'Mantenimiento',
-                date: '2024-07-21'
+                expenseDatetime: '2024-07-21T00:00:00Z'  // Formato ISO 8601
             });
 
         expect(res.statusCode).toEqual(404);
@@ -166,7 +167,7 @@ describe('Expense Routes', () => {
                 amount: -10,
                 category: '',
                 subcategory: '',
-                date: 'invalid date'
+                expenseDatetime: 'invalid date'  // Formato incorrecto
             });
 
         expect(res.statusCode).toEqual(400);
@@ -175,7 +176,7 @@ describe('Expense Routes', () => {
     it('should upload a receipt and log an expense', async () => {
         (processReceipt as jest.Mock).mockImplementation(() =>
             Promise.resolve({
-                date: '2024-07-21',
+                expenseDatetime: '2024-07-21T00:00:00Z',  // Fecha en formato ISO 8601
                 amount: 100.00,
                 category: 'Casa',
                 subcategory: 'Mantenimiento',
@@ -189,7 +190,7 @@ describe('Expense Routes', () => {
             amount: 100.00,
             category: 'Casa',
             subcategory: 'Mantenimiento',
-            date: '2024-07-21'
+            expenseDatetime: '2024-07-21T00:00:00Z'  // Fecha en formato ISO 8601
         });
 
         const res = await request(app)
@@ -204,7 +205,7 @@ describe('Expense Routes', () => {
             amount: 100.00,
             category: 'Casa',
             subcategory: 'Mantenimiento',
-            date: '2024-07-21'
+            expenseDatetime: '2024-07-21T00:00:00Z'  // Fecha en formato ISO 8601
         });
     });
 

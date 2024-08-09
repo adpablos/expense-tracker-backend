@@ -46,14 +46,36 @@ router.use(responseLogger);
  *         name: startDate
  *         schema:
  *           type: string
- *           format: date
- *         description: The start date to filter expenses (YYYY-MM-DD).
+ *           format: date-time
+ *           example: "2024-08-09T00:00:00Z"
+ *         description: The start date to filter expenses (ISO 8601 format).
  *       - in: query
  *         name: endDate
  *         schema:
  *           type: string
- *           format: date
- *         description: The end date to filter expenses (YYYY-MM-DD).
+ *           format: date-time
+ *           example: "2024-08-09T23:59:59Z"
+ *         description: The end date to filter expenses (ISO 8601 format).
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by category.
+ *       - in: query
+ *         name: subcategory
+ *         schema:
+ *           type: string
+ *         description: Filter by subcategory.
+ *       - in: query
+ *         name: amount
+ *         schema:
+ *           type: number
+ *         description: Filter by amount.
+ *       - in: query
+ *         name: description
+ *         schema:
+ *           type: string
+ *         description: Filter by description (partial match).
  *       - in: query
  *         name: page
  *         schema:
@@ -98,45 +120,80 @@ router.get('/', getExpenses);
  * @swagger
  * /api/expenses:
  *   post:
- *     tags: [Expenses]
- *     summary: Create a new expense
- *     description: Record a new expense entry. Each expense must include a description, amount, category, subcategory, and date.
+ *     summary: Add a new expense
+ *     description: Adds a new expense to the system with the given details.
+ *     tags:
+ *       - Expenses
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - description
- *               - amount
- *               - category
- *               - subcategory
- *               - date
  *             properties:
  *               description:
  *                 type: string
- *                 description: A brief description of the expense.
+ *                 example: "Compra en supermercado"
  *               amount:
  *                 type: number
- *                 description: The monetary amount of the expense.
+ *                 example: 75.00
  *               category:
  *                 type: string
- *                 description: The category under which this expense falls.
+ *                 example: "Alimentación"
  *               subcategory:
  *                 type: string
- *                 description: The subcategory under which this expense falls.
- *               date:
+ *                 example: "Supermercado"
+ *               expenseDatetime:
  *                 type: string
- *                 format: date
- *                 description: The date when the expense was incurred.
+ *                 format: date-time
+ *                 example: "2024-08-09T13:24:00-04:00"
  *     responses:
  *       201:
- *         description: The expense was successfully created.
+ *         description: Expense created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Expense'
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 amount:
+ *                   type: number
+ *                 category:
+ *                   type: string
+ *                 subcategory:
+ *                   type: string
+ *                 expenseDatetime:
+ *                   type: string
+ *                   format: date-time
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: Invalid input data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as '2024-08-09T14:30:00Z' or '2024-08-09T14:30:00-04:00'."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Error creating expense"
  */
 router.post('/', addExpense);
 
@@ -144,16 +201,17 @@ router.post('/', addExpense);
  * @swagger
  * /api/expenses/{id}:
  *   put:
- *     tags: [Expenses]
  *     summary: Update an existing expense
- *     description: Modify the details of an existing expense by its ID. You can change the description, amount, category, subcategory, and date.
+ *     description: Updates the details of an existing expense by its ID.
+ *     tags:
+ *       - Expenses
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
+ *         description: The unique ID of the expense to update.
  *         schema:
  *           type: string
- *         description: The unique ID of the expense.
  *     requestBody:
  *       required: true
  *       content:
@@ -163,29 +221,77 @@ router.post('/', addExpense);
  *             properties:
  *               description:
  *                 type: string
- *                 description: A brief description of the expense.
+ *                 example: "Compra en supermercado"
  *               amount:
  *                 type: number
- *                 description: The monetary amount of the expense.
+ *                 example: 75.00
  *               category:
  *                 type: string
- *                 description: The category under which this expense falls.
+ *                 example: "Alimentación"
  *               subcategory:
  *                 type: string
- *                 description: The subcategory under which this expense falls.
- *               date:
+ *                 example: "Supermercado"
+ *               expense_datetime:
  *                 type: string
- *                 format: date
- *                 description: The date when the expense was incurred.
+ *                 format: date-time
+ *                 example: "2024-08-09T13:24:00-04:00"
  *     responses:
  *       200:
- *         description: The expense was successfully updated.
+ *         description: Expense updated successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Expense'
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 amount:
+ *                   type: number
+ *                 category:
+ *                   type: string
+ *                 subcategory:
+ *                   type: string
+ *                 expense_datetime:
+ *                   type: string
+ *                   format: date-time
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: Invalid input data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as '2024-08-09T14:30:00Z' or '2024-08-09T14:30:00-04:00'."
  *       404:
- *         description: The expense with the specified ID was not found.
+ *         description: Expense not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Expense not found"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Error updating expense"
  */
 router.put('/:id', updateExpense);
 

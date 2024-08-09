@@ -11,7 +11,6 @@ import {encodeImage} from '../utils/encodeImage';
 import {analyzeTranscription, processReceipt, transcribeAudio} from '../external/openaiService';
 import path from 'path';
 import {AppError} from '../utils/AppError';
-import {isValid, parseISO} from 'date-fns';
 import {promisify} from 'util';
 
 const expenseService = new ExpenseService(pool);
@@ -26,26 +25,19 @@ const ffprobe = promisify(ffmpeg.ffprobe);
 
 export const getExpenses = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {startDate, endDate, page = 1, limit = 10} = req.query;
+        const { startDate, endDate, category, subcategory, amount, description, page = 1, limit = 10 } = req.query;
 
         // Date validation
-        let startDateParsed: Date | undefined;
-        let endDateParsed: Date | undefined;
-
-        if (startDate) {
-            startDateParsed = parseISO(startDate as string);
-            if (!isValid(startDateParsed)) {
-                logger.warn('Invalid startDate format: %s', startDate);
-                return res.status(400).json({message: 'Invalid startDate format. Expected format: YYYY-MM-DD'});
-            }
+        if (startDate && isNaN(new Date(startDate as string).getTime())) {
+            return res.status(400).json({
+                message: 'Invalid startDate format. Please provide the date in ISO 8601 format, such as "2024-08-09T00:00:00Z".'
+            });
         }
 
-        if (endDate) {
-            endDateParsed = parseISO(endDate as string);
-            if (!isValid(endDateParsed)) {
-                logger.warn('Invalid endDate format: %s', endDate);
-                return res.status(400).json({message: 'Invalid endDate format. Expected format: YYYY-MM-DD'});
-            }
+        if (endDate && isNaN(new Date(endDate as string).getTime())) {
+            return res.status(400).json({
+                message: 'Invalid endDate format. Please provide the date in ISO 8601 format, such as "2024-08-09T23:59:59Z".'
+            });
         }
 
         // Pagination validation
@@ -60,12 +52,19 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
             return res.status(400).json({message: 'Invalid limit number. Must be a positive integer.'});
         }
 
-        const {expenses, totalItems} = await expenseService.getExpenses({
-            startDate: startDateParsed,
-            endDate: endDateParsed,
-            page: pageNumber,
-            limit: limitNumber,
-        });
+        // Building the filters object
+        const filters = {
+            startDate: startDate ? new Date(startDate as string) : undefined,
+            endDate: endDate ? new Date(endDate as string) : undefined,
+            category: category as string,
+            subcategory: subcategory as string,
+            amount: amount ? parseFloat(amount as string) : undefined,
+            description: description as string,
+            page: parseInt(page as string, 10),
+            limit: parseInt(limit as string, 10)
+        };
+
+        const {expenses, totalItems} = await expenseService.getExpenses(filters);
 
         const totalPages = Math.ceil(totalItems / limitNumber);
 
@@ -84,8 +83,20 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
 
 export const addExpense = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {description, amount, category, subcategory, date} = req.body;
-        const newExpense = new Expense(description, amount, category, subcategory, new Date(date));
+        const { description, amount, category, subcategory, expenseDatetime } = req.body;
+
+        // Convert the expenseDatetime to a Date object
+        const expenseDate = new Date(expenseDatetime);
+
+        // Validate the date
+        if (isNaN(expenseDate.getTime())) {
+            return res.status(400).json({
+                message: 'Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as "2024-08-09T14:30:00Z" or "2024-08-09T14:30:00-04:00".'
+            });
+        }
+
+
+        const newExpense = new Expense(description, amount, category, subcategory, expenseDate);
         const createdExpense = await expenseService.createExpense(newExpense);
 
         res.status(201).json(createdExpense);
@@ -95,13 +106,25 @@ export const addExpense = async (req: Request, res: Response, next: NextFunction
     }
 };
 
+
 export const updateExpense = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = req.params.id;
+        const { expense_datetime } = req.body;
+
+        // Validate the date
+        if (expense_datetime && isNaN(new Date(expense_datetime).getTime())) {
+            return res.status(400).json({
+                message: 'Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as "2024-08-09T14:30:00Z" or "2024-08-09T14:30:00-04:00".'
+            });
+        }
+
+        // Update the expense
         const updatedExpense = await expenseService.updateExpense(id, req.body);
+
         if (!updatedExpense) {
             logger.warn('Expense not found: %s', id);
-            return res.status(404).json({message: 'Expense not found'});
+            return res.status(404).json({ message: 'Expense not found' });
         }
 
         res.status(200).json(updatedExpense);
@@ -110,6 +133,7 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
         next(error);
     }
 };
+
 
 export const deleteExpense = async (req: Request, res: Response, next: NextFunction) => {
     try {

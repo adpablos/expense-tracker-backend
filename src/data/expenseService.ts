@@ -6,6 +6,10 @@ import logger from '../config/logger';
 interface ExpenseFilters {
     startDate?: Date;
     endDate?: Date;
+    category?: string;
+    subcategory?: string;
+    amount?: number;
+    description?: string;
     page: number;
     limit: number;
 }
@@ -18,83 +22,128 @@ export class ExpenseService {
     }
 
     async getExpenses(filters: ExpenseFilters): Promise<{ expenses: Expense[], totalItems: number }> {
-        logger.info('Fetching expenses', {filters});
+        logger.info('Fetching expenses', { filters });
 
-        const {startDate, endDate, page, limit} = filters;
+        const { startDate, endDate, page, limit, category, subcategory, amount, description } = filters;
         const offset = (page - 1) * limit;
-        const params: any[] = [limit, offset];
-        const countParams: any[] = [];
+        const params: any[] = [];
+        const conditions: string[] = [];
+        let paramIndex = 1;
+
+        // Add optional filters to the SQL query
+        if (startDate) {
+            conditions.push(`expense_datetime >= $${paramIndex}`);
+            params.push(startDate);
+            paramIndex++;
+        }
+
+        if (endDate) {
+            conditions.push(`expense_datetime <= $${paramIndex}`);
+            params.push(endDate);
+            paramIndex++;
+        }
+
+        if (category) {
+            conditions.push(`category = $${paramIndex}`);
+            params.push(category);
+            paramIndex++;
+        }
+
+        if (subcategory) {
+            conditions.push(`subcategory = $${paramIndex}`);
+            params.push(subcategory);
+            paramIndex++;
+        }
+
+        if (amount) {
+            conditions.push(`amount = $${paramIndex}`);
+            params.push(amount);
+            paramIndex++;
+        }
+
+        if (description) {
+            conditions.push(`description ILIKE $${paramIndex}`);
+            params.push(`%${description}%`);
+            paramIndex++;
+        }
+
+        // Build the final SQL query
         let query = 'SELECT * FROM expenses';
         let countQuery = 'SELECT COUNT(*) FROM expenses';
 
-        if (startDate || endDate) {
-            query += ' WHERE';
-            countQuery += ' WHERE';
-            if (startDate) {
-                query += ' date >= $3';
-                countQuery += ' date >= $1';
-                params.push(startDate);
-                countParams.push(startDate);
-            }
-            if (endDate) {
-                query += (startDate ? ' AND' : '') + ' date <= $4';
-                countQuery += (startDate ? ' AND' : '') + ' date <= $2';
-                params.push(endDate);
-                countParams.push(endDate);
-            }
+        if (conditions.length > 0) {
+            const whereClause = ` WHERE ${conditions.join(' AND ')}`;
+            query += whereClause;
+            countQuery += whereClause;
         }
 
-        query += ' ORDER BY date DESC LIMIT $1 OFFSET $2';
+        query += ` ORDER BY expense_datetime DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+        params.push(limit, offset);
 
         try {
             const result = await this.db.query(query, params);
-            const countResult = await this.db.query(countQuery, countParams);
+            const countResult = await this.db.query(countQuery, params.slice(0, paramIndex - 1));  // Just the WHERE clause params
             const totalItems = parseInt(countResult.rows[0].count, 10);
-            logger.info('Fetched expenses', {count: result.rows.length, totalItems});
-            return {expenses: result.rows.map(Expense.fromDatabase), totalItems};
+            logger.info('Fetched expenses', { count: result.rows.length, totalItems });
+            return { expenses: result.rows.map(Expense.fromDatabase), totalItems };
         } catch (error) {
-            logger.error('Error fetching expenses', {error: error});
+            logger.error('Error fetching expenses', { error: error });
             throw new AppError('Error fetching expenses', 500);
         }
     }
 
+
+
     async createExpense(expense: Expense): Promise<Expense> {
-        logger.info('Creating expense', {expense: expense.description});
+        logger.info('Creating expense', { expense: expense.description });
+
         const errors = expense.validate();
         if (errors.length > 0) {
-            logger.warn('Invalid expense data', {errors});
+            logger.warn('Invalid expense data', { errors });
             throw new AppError(`Invalid expense: ${errors.join(', ')}`, 400);
         }
 
         try {
             const dbExpense = expense.toDatabase();
             const result = await this.db.query(
-                'INSERT INTO expenses (id, description, amount, category, subcategory, date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-                [dbExpense.id, dbExpense.description, dbExpense.amount, dbExpense.category, dbExpense.subcategory, dbExpense.date]
+                `INSERT INTO expenses (id, description, amount, category, subcategory, expense_datetime, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
+                [
+                    dbExpense.id,
+                    dbExpense.description,
+                    dbExpense.amount,
+                    dbExpense.category,
+                    dbExpense.subcategory,
+                    dbExpense.expense_datetime
+                ]
             );
             const createdExpense = Expense.fromDatabase(result.rows[0]);
-            logger.info('Created expense', {expense: createdExpense});
+            logger.info('Created expense', { expense: createdExpense });
             return createdExpense;
         } catch (error) {
-            logger.error('Error creating expense', {error: error});
+            logger.error('Error creating expense', { error: error });
             throw new AppError('Error creating expense', 500);
         }
     }
 
     async updateExpense(id: string, expenseData: Partial<Expense>): Promise<Expense> {
         logger.info('Updating expense', {id, expenseData});
+
         const currentExpense = await this.getExpenseById(id);
         if (!currentExpense) {
             logger.warn('Expense not found', {id});
             throw new AppError('Expense not found', 404);
         }
 
+        // Creation of a new Expense object with the updated data
         const updatedExpense = new Expense(
             expenseData.description || currentExpense.description,
             expenseData.amount || currentExpense.amount,
             expenseData.category || currentExpense.category,
             expenseData.subcategory || currentExpense.subcategory,
-            expenseData.date ? new Date(expenseData.date) : currentExpense.date,
+            expenseData.expenseDatetime ? new Date(expenseData.expenseDatetime) : currentExpense.expenseDatetime,
+            currentExpense.createdAt,
+            new Date(),
             id
         );
 
@@ -106,14 +155,27 @@ export class ExpenseService {
 
         try {
             const dbExpense = updatedExpense.toDatabase();
+
+            // SQL Query to update the expense
             const result = await this.db.query(
-                'UPDATE expenses SET description = $1, amount = $2, category = $3, subcategory = $4, date = $5 WHERE id = $6 RETURNING *',
-                [dbExpense.description, dbExpense.amount, dbExpense.category, dbExpense.subcategory, dbExpense.date, id]
+                `UPDATE expenses 
+             SET description = $1, amount = $2, category = $3, subcategory = $4, expense_datetime = $5, updated_at = $6 
+             WHERE id = $7 RETURNING *`,
+                [
+                    dbExpense.description,
+                    dbExpense.amount,
+                    dbExpense.category,
+                    dbExpense.subcategory,
+                    dbExpense.expense_datetime,
+                    dbExpense.updated_at,
+                    id
+                ]
             );
             if (result.rows.length === 0) {
                 logger.warn('Expense not found after update', {id});
                 throw new AppError('Expense not found', 404);
             }
+
             const updatedExpenseData = Expense.fromDatabase(result.rows[0]);
             logger.info('Updated expense', {expense: updatedExpenseData});
             return updatedExpenseData;

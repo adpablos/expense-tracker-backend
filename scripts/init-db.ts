@@ -6,15 +6,15 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 async function initializeDatabase() {
+    const sslConfig = process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false;
+
     const client = new Client({
         user: process.env.DB_USER,
         host: process.env.DB_HOST,
         database: process.env.DB_DATABASE,
         password: process.env.DB_PASSWORD,
         port: parseInt(process.env.DB_PORT || '5432'),
-        ssl: {
-            rejectUnauthorized: false
-        }
+        ssl: sslConfig,
     });
 
     try {
