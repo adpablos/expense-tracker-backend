@@ -1,4 +1,4 @@
-import {v4 as uuidv4} from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 export class Expense {
     public id: string;
@@ -6,14 +6,18 @@ export class Expense {
     public amount: number;
     public category: string;
     public subcategory: string;
-    public date: Date;
+    public expenseDatetime: Date;
+    public createdAt: Date;
+    public updatedAt: Date;
 
     constructor(
         description: string,
         amount: number,
         category: string,
         subcategory: string,
-        date: Date,
+        expenseDatetime: Date = new Date(),
+        createdAt: Date = new Date(),
+        updatedAt: Date = new Date(),
         id?: string
     ) {
         this.id = id || uuidv4();
@@ -21,7 +25,9 @@ export class Expense {
         this.amount = amount;
         this.category = category;
         this.subcategory = subcategory;
-        this.date = date;
+        this.expenseDatetime = expenseDatetime;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     static fromDatabase(data: any): Expense {
@@ -30,7 +36,9 @@ export class Expense {
             data.amount,
             data.category,
             data.subcategory,
-            new Date(data.date),
+            new Date(data.expense_datetime),
+            new Date(data.created_at),
+            new Date(data.updated_at),
             data.id
         );
     }
@@ -42,7 +50,9 @@ export class Expense {
             amount: this.amount,
             category: this.category,
             subcategory: this.subcategory,
-            date: this.date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+            expense_datetime: this.expenseDatetime,
+            created_at: this.createdAt,
+            updated_at: this.updatedAt,
         };
     }
 
@@ -52,7 +62,7 @@ export class Expense {
         if (this.amount <= 0) errors.push('Amount must be greater than 0');
         if (!this.category) errors.push('Category is required');
         if (!this.subcategory) errors.push('Subcategory is required');
-        if (!(this.date instanceof Date) || isNaN(this.date.getTime())) errors.push('Invalid date');
+        if (isNaN(this.expenseDatetime.getTime())) errors.push('Invalid expense datetime');
         return errors;
     }
 }
