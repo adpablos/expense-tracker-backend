@@ -103,9 +103,12 @@ router.put('/:id', updateCategory);
  * @swagger
  * /api/categories/{id}:
  *   delete:
- *     tags: [Categories]
+ *     tags:
+ *       - Categories
  *     summary: Delete a category
- *     description: Remove an existing category by its ID. Note that this action cannot be undone.
+ *     description: |
+ *       Remove an existing category by its ID. Note that this action cannot be undone.
+ *       If the category has subcategories, they will also be deleted if `force=true` is provided.
  *     parameters:
  *       - in: path
  *         name: id
@@ -113,9 +116,19 @@ router.put('/:id', updateCategory);
  *         schema:
  *           type: string
  *         description: The unique ID of the category.
+ *       - in: query
+ *         name: force
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: |
+ *           If set to `true`, all associated subcategories will be deleted along with the category.
  *     responses:
  *       204:
  *         description: The category was successfully deleted.
+ *       400:
+ *         description: The category cannot be deleted due to associated subcategories.
  *       404:
  *         description: The category with the specified ID was not found.
  */

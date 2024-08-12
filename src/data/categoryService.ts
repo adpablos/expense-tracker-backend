@@ -68,17 +68,36 @@ export class CategoryService {
     }
 
     async deleteCategory(id: string): Promise<number | null> {
-        logger.info('Deleting category', {id});
+        logger.info('Deleting category', { id });
         try {
             const result = await this.db.query(
                 'DELETE FROM categories WHERE id = $1',
                 [id]
             );
-            logger.info('Deleted category', {id, rowCount: result.rowCount});
+            logger.info('Deleted category', { id, rowCount: result.rowCount });
+            return result.rowCount;
+        } catch (error: any) {
+            if (error.code === '23503') {
+                logger.error('Cannot delete category due to existing subcategories: %s', error.detail);
+                throw new AppError('Cannot delete category with associated subcategories. Use force=true to force deletion.', 400);
+            }
+            logger.error('Error deleting category', { error });
+            throw new AppError('Error deleting category', 500); // Volvemos a lanzar el error como AppError
+        }
+    }
+
+    async deleteSubcategoriesByCategoryId(categoryId: string): Promise<number | null> {
+        logger.info('Deleting subcategories for categoryId: %s', categoryId);
+        try {
+            const result = await this.db.query(
+                'DELETE FROM subcategories WHERE category_id = $1',
+                [categoryId]
+            );
+            logger.info('Deleted subcategories for categoryId: %s', categoryId);
             return result.rowCount;
         } catch (error) {
-            logger.error('Error deleting category', {error: error});
-            throw new AppError('Error deleting category', 500);
+            logger.error('Error deleting subcategories for categoryId: %s, error: %s', categoryId, error);
+            throw new AppError('Error deleting subcategories', 500);
         }
     }
 }

@@ -46,15 +46,21 @@ export const updateCategory = async (req: Request, res: Response, next: NextFunc
 
 export const deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {id} = req.params;
+        const { id } = req.params;
+        const forceDelete = req.query.force === 'true';
+
+        if (forceDelete) {
+            // Delete subcategories associated first
+            await categoryService.deleteSubcategoriesByCategoryId(id);
+        }
+
         const result = await categoryService.deleteCategory(id);
         if (result === 0) {
             logger.warn('Category not found: %s', id);
-            return res.status(404).json({message: 'Category not found'});
+            return res.status(404).json({ message: 'Category not found' });
         }
         res.status(204).send();
     } catch (error) {
-        logger.error('Error deleting category: %s', error);
         next(error);
     }
 };

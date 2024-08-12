@@ -9,7 +9,8 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "test": "jest",
-    "export-openapi": "ts-node scripts/export-openapi.ts"
+    "export-openapi": "ts-node scripts/export-openapi.ts",
+    "import-notion": "ts-node scripts/migrate-expenses.ts"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +19,7 @@
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
     "date-fns": "^3.6.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
