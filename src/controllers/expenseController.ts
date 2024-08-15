@@ -4,14 +4,15 @@ import ffmpegPath from 'ffmpeg-static';
 import ffprobePath from '@ffprobe-installer/ffprobe';
 import logger from '../config/logger';
 import {NextFunction, Request, Response} from 'express';
-import {ExpenseService} from '../data/expenseService';
+import {ExpenseService} from '../services/expenseService';
 import {Expense} from '../models/Expense';
 import pool from '../config/db';
 import {encodeImage} from '../utils/encodeImage';
-import {analyzeTranscription, processReceipt, transcribeAudio} from '../external/openaiService';
+import {analyzeTranscription, processReceipt, transcribeAudio} from '../services/external/openaiService';
 import path from 'path';
 import {AppError} from '../utils/AppError';
 import {promisify} from 'util';
+import {NotificationService} from "../services/external/notificationService";
 
 const expenseService = new ExpenseService(pool);
 
@@ -23,9 +24,11 @@ ffmpeg.setFfprobePath(ffprobePath.path);
 
 const ffprobe = promisify(ffmpeg.ffprobe);
 
+const notificationService = new NotificationService();
+
 export const getExpenses = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { startDate, endDate, category, subcategory, amount, description, page = 1, limit = 10 } = req.query;
+        const { startDate, endDate, category, subcategory, amount, description, householdId, page = 1, limit = 10 } = req.query;
 
         // Date validation
         if (startDate && isNaN(new Date(startDate as string).getTime())) {
@@ -60,6 +63,7 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
             subcategory: subcategory as string,
             amount: amount ? parseFloat(amount as string) : undefined,
             description: description as string,
+            householdId: householdId as string,
             page: parseInt(page as string, 10),
             limit: parseInt(limit as string, 10)
         };
@@ -84,20 +88,29 @@ export const getExpenses = async (req: Request, res: Response, next: NextFunctio
 export const addExpense = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { description, amount, category, subcategory, expenseDatetime } = req.body;
+        const householdId = req.user?.householdId;
 
-        // Convert the expenseDatetime to a Date object
+        if (!householdId) {
+            return res.status(400).json({ message: 'User does not belong to a household' });
+        }
+
         const expenseDate = new Date(expenseDatetime);
 
-        // Validate the date
         if (isNaN(expenseDate.getTime())) {
             return res.status(400).json({
                 message: 'Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as "2024-08-09T14:30:00Z" or "2024-08-09T14:30:00-04:00".'
             });
         }
 
-
-        const newExpense = new Expense(description, amount, category, subcategory, expenseDate);
+        const newExpense = new Expense(description, amount, category, subcategory, householdId, expenseDate);
         const createdExpense = await expenseService.createExpense(newExpense);
+
+        // Notify household members about the new expense
+        await notificationService.notifyHouseholdMembers(
+            householdId,
+            `New expense added: ${createdExpense.description} - $${createdExpense.amount}`,
+            req.user!.id
+        );
 
         res.status(201).json(createdExpense);
     } catch (error) {
@@ -153,6 +166,12 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         return res.status(400).send('No file uploaded.');
     }
 
+    const householdId = req.user?.householdId;
+    if (!householdId) {
+        logger.warn('User does not belong to a household');
+        return res.status(400).json({ message: 'User does not belong to a household' });
+    }
+
     const filePath = req.file.path;
     const fileExtension = path.extname(req.file.originalname);
     const newFilePath = `${filePath}${fileExtension}`;
@@ -172,7 +191,7 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         let expenseDetails;
         if (req.file.mimetype.startsWith('image')) {
             const base64Image = encodeImage(newFilePath);
-            expenseDetails = await processReceipt(base64Image);
+            expenseDetails = await processReceipt(base64Image, householdId);
         } else if (req.file.mimetype.startsWith('audio')) {
             // Convert to WAV format
             wavFilePath = `${newFilePath}.wav`;
@@ -185,7 +204,7 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
             });
 
             const transcription = await transcribeAudio(wavFilePath);
-            expenseDetails = await analyzeTranscription(transcription);
+            expenseDetails = await analyzeTranscription(transcription, householdId);
         } else {
             throw new AppError('Unsupported file type', 400);
         }

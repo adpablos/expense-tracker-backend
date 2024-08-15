@@ -4,22 +4,25 @@ export class Subcategory {
     public id: string;
     public name: string;
     public categoryId: string;
+    public householdId: string;
 
-    constructor(name: string, categoryId: string, id?: string) {
+    constructor(name: string, categoryId: string, householdId: string, id?: string) {
         this.id = id || uuidv4();
         this.name = name;
         this.categoryId = categoryId;
+        this.householdId = householdId;
     }
 
     static fromDatabase(data: any): Subcategory {
-        return new Subcategory(data.name, data.category_id, data.id);
+        return new Subcategory(data.name, data.category_id, data.household_id, data.id);
     }
 
     toDatabase(): any {
         return {
             id: this.id,
             name: this.name,
-            category_id: this.categoryId
+            category_id: this.categoryId,
+            household_id: this.householdId
         };
     }
 

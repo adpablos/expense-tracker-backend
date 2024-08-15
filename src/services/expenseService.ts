@@ -10,6 +10,7 @@ interface ExpenseFilters {
     subcategory?: string;
     amount?: number;
     description?: string;
+    householdId: string;
     page: number;
     limit: number;
 }
@@ -24,7 +25,7 @@ export class ExpenseService {
     async getExpenses(filters: ExpenseFilters): Promise<{ expenses: Expense[], totalItems: number }> {
         logger.info('Fetching expenses', { filters });
 
-        const { startDate, endDate, page, limit, category, subcategory, amount, description } = filters;
+        const { startDate, endDate, page, limit, category, subcategory, amount, description , householdId} = filters;
         const offset = (page - 1) * limit;
         const params: any[] = [];
         const conditions: string[] = [];
@@ -67,6 +68,12 @@ export class ExpenseService {
             paramIndex++;
         }
 
+        if (householdId) {
+            conditions.push(`household_id = $${paramIndex}`);
+            params.push(householdId);
+            paramIndex++;
+        }
+
         // Build the final SQL query
         let query = 'SELECT * FROM expenses';
         let countQuery = 'SELECT COUNT(*) FROM expenses';
@@ -106,15 +113,16 @@ export class ExpenseService {
         try {
             const dbExpense = expense.toDatabase();
             const result = await this.db.query(
-                `INSERT INTO expenses (id, description, amount, category, subcategory, expense_datetime, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) RETURNING *`,
+                `INSERT INTO expenses (id, description, amount, category, subcategory, expense_datetime, created_at, updated_at, household_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), $7) RETURNING *`,
                 [
                     dbExpense.id,
                     dbExpense.description,
                     dbExpense.amount,
                     dbExpense.category,
                     dbExpense.subcategory,
-                    dbExpense.expense_datetime
+                    dbExpense.expense_datetime,
+                    dbExpense.household_id
                 ]
             );
             const createdExpense = Expense.fromDatabase(result.rows[0]);
@@ -141,6 +149,7 @@ export class ExpenseService {
             expenseData.amount || currentExpense.amount,
             expenseData.category || currentExpense.category,
             expenseData.subcategory || currentExpense.subcategory,
+            expenseData.householdId || currentExpense.householdId,
             expenseData.expenseDatetime ? new Date(expenseData.expenseDatetime) : currentExpense.expenseDatetime,
             currentExpense.createdAt,
             new Date(),

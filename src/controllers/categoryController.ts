@@ -1,5 +1,5 @@
 import {NextFunction, Request, Response} from 'express';
-import {CategoryService} from '../data/categoryService';
+import {CategoryService} from '../services/categoryService';
 import {Category} from '../models/Category';
 import pool from '../config/db';
 import logger from '../config/logger';
@@ -18,8 +18,14 @@ export const getCategories = async (req: Request, res: Response, next: NextFunct
 
 export const addCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {name} = req.body;
-        const newCategory = new Category(name);
+        const { name } = req.body;
+        const householdId = req.user?.householdId;
+
+        if (!householdId) {
+            return res.status(400).json({ message: 'User does not belong to a household' });
+        }
+
+        const newCategory = new Category(name, householdId);
         const createdCategory = await categoryService.createCategory(newCategory);
         res.status(201).json(createdCategory);
     } catch (error) {

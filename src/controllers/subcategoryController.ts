@@ -1,5 +1,5 @@
 import {NextFunction, Request, Response} from 'express';
-import {SubcategoryService} from '../data/subcategoryService';
+import {SubcategoryService} from '../services/subcategoryService';
 import {Subcategory} from '../models/Subcategory';
 import pool from '../config/db';
 import logger from '../config/logger';
@@ -19,7 +19,13 @@ export const getSubcategories = async (req: Request, res: Response, next: NextFu
 export const addSubcategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const {name, categoryId} = req.body;
-        const newSubcategory = new Subcategory(name, categoryId);
+        const householdId = req.user?.householdId;
+
+        if (!householdId) {
+            return res.status(400).json({ message: 'User does not belong to a household' });
+        }
+
+        const newSubcategory = new Subcategory(name, categoryId, householdId);
         const createdSubcategory = await subcategoryService.createSubcategory(newSubcategory);
         res.status(201).json(createdSubcategory);
     } catch (error) {

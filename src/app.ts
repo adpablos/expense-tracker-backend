@@ -6,6 +6,9 @@ import subcategoryRoutes from './routes/subcategoryRoutes';
 import {errorHandler} from './middleware/errorHandler';
 import {AppError} from './utils/AppError';
 import setupSwagger from "./swagger";
+import userRoutes from "./routes/userRoutes";
+import householdRoutes from "./routes/householdRoutes";
+import authHelperRoutes from "./routes/authHelperRoutes";
 
 const app = express();
 
@@ -34,6 +37,11 @@ setupSwagger(app);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/subcategories', subcategoryRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/households', householdRoutes);
+if (process.env.NODE_ENV === 'development') {
+    app.use('/auth-help', authHelperRoutes);
+}
 
 // Middleware to handle not found routes
 app.use((req, res, next) => {

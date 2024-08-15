@@ -20,21 +20,14 @@ async function initializeDatabase() {
     try {
         await client.connect();
 
-        // Leer y ejecutar el script de creación de tablas
         const sqlScript = fs.readFileSync(path.join(__dirname, 'init-db.sql'), 'utf8');
         await client.query(sqlScript);
-        console.log('Tables created successfully');
-
-        // Leer y ejecutar el script de inserción de datos
-        const dataScript = fs.readFileSync(path.join(__dirname, 'init-db-data.sql'), 'utf8');
-        await client.query(dataScript);
-        console.log('Initial data inserted successfully');
+        console.log('Database initialization completed successfully');
 
         await client.end();
-
     } catch (err) {
         console.error('Error initializing database:', err);
     }
 }
 
-initializeDatabase();
+initializeDatabase().then(r => r);

@@ -5,6 +5,7 @@ import path from "path";
 import {AppError} from "../utils/AppError";
 import requestLogger from "../middleware/requestLogger";
 import responseLogger from "../middleware/responseLogger";
+import { authMiddleware, attachUser } from '../middleware/authMiddleware';
 
 const router = express.Router();
 const upload = multer({
@@ -25,6 +26,8 @@ const upload = multer({
 
 router.use(requestLogger);
 router.use(responseLogger);
+router.use(authMiddleware);
+router.use(attachUser);
 
 /**
  * @swagger

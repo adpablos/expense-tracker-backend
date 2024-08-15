@@ -7,11 +7,14 @@ import {
 } from '../controllers/subcategoryController';
 import requestLogger from "../middleware/requestLogger";
 import responseLogger from "../middleware/responseLogger";
+import {attachUser, authMiddleware} from "../middleware/authMiddleware";
 
 const router = express.Router();
 
 router.use(requestLogger);
 router.use(responseLogger);
+router.use(authMiddleware);
+router.use(attachUser);
 
 /**
  * @swagger

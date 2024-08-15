@@ -9,12 +9,14 @@ export class Expense {
     public expenseDatetime: Date;
     public createdAt: Date;
     public updatedAt: Date;
+    public householdId: string;
 
     constructor(
         description: string,
         amount: number,
         category: string,
         subcategory: string,
+        householdId: string,
         expenseDatetime: Date = new Date(),
         createdAt: Date = new Date(),
         updatedAt: Date = new Date(),
@@ -28,6 +30,7 @@ export class Expense {
         this.expenseDatetime = expenseDatetime;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.householdId = householdId;
     }
 
     static fromDatabase(data: any): Expense {
@@ -36,6 +39,7 @@ export class Expense {
             data.amount,
             data.category,
             data.subcategory,
+            data.household_id,
             new Date(data.expense_datetime),
             new Date(data.created_at),
             new Date(data.updated_at),
@@ -53,6 +57,7 @@ export class Expense {
             expense_datetime: this.expenseDatetime,
             created_at: this.createdAt,
             updated_at: this.updatedAt,
+            household_id: this.householdId
         };
     }
 

@@ -2,8 +2,8 @@ import request from 'supertest';
 import express, { Application } from 'express';
 import expenseRoutes from '../routes/expenseRoutes';
 import multer from 'multer';
-import { ExpenseService } from '../data/expenseService';
-import { processReceipt } from '../external/openaiService';
+import { ExpenseService } from '../services/expenseService';
+import { processReceipt } from '../services/external/openaiService';
 
 const app: Application = express();
 multer({ dest: 'uploads/' });
@@ -11,7 +11,7 @@ app.use(express.json());
 app.use('/api/expenses', expenseRoutes);
 
 // Mock OpenAI service
-jest.mock('../external/openaiService');
+jest.mock('../services/external/openaiService');
 
 const mockExpense = {
     id: '1',

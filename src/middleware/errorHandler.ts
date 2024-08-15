@@ -1,6 +1,7 @@
-import {NextFunction, Request, Response} from 'express';
-import {AppError} from '../utils/AppError';
+import { NextFunction, Request, Response } from 'express';
+import { AppError } from '../utils/AppError';
 import logger from '../config/logger';
+import { UnauthorizedError } from 'express-jwt';
 
 export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
     logger.error('Error: %s', err.message, {
@@ -16,6 +17,13 @@ export const errorHandler = (err: Error, req: Request, res: Response, next: Next
         return res.status(err.statusCode).json({
             status: 'error',
             message: err.message
+        });
+    }
+
+    if (err instanceof UnauthorizedError) {
+        return res.status(401).json({
+            status: 'error',
+            message: 'No authorization token was found'
         });
     }
 
