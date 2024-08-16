@@ -9,7 +9,8 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "test": "jest",
-    "export-openapi": "ts-node scripts/export-openapi.ts"
+    "export-openapi": "ts-node scripts/export-openapi.ts",
+    "prepare-prod-db": "ts-node scripts/prepare_production_db.ts"
   },
   "keywords": [],
   "author": "",

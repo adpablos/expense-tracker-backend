@@ -2,12 +2,15 @@ import {Pool} from 'pg';
 import {Subcategory} from '../models/Subcategory';
 import {AppError} from '../utils/AppError';
 import logger from '../config/logger';
+import {NotificationService} from "./external/notificationService";
 
 export class SubcategoryService {
     private db: Pool;
+    private notificationService: NotificationService;
 
     constructor(db: Pool) {
         this.db = db;
+        this.notificationService = new NotificationService();
     }
 
     async getAllSubcategories(householdId: string): Promise<Subcategory[]> {
@@ -40,6 +43,13 @@ export class SubcategoryService {
             );
             const createdSubcategory = Subcategory.fromDatabase(result.rows[0]);
             logger.info('Created subcategory', { subcategory: createdSubcategory });
+
+            // Notify household members about the new subcategory
+            await this.notificationService.notifyHouseholdMembers(
+                createdSubcategory.householdId,
+                `Nueva categoría creada: ${createdSubcategory.name}`
+            );
+
             return createdSubcategory;
         } catch (error) {
             logger.error('Error creating subcategory', { error: error });
@@ -60,6 +70,13 @@ export class SubcategoryService {
             }
             const updatedSubcategory = Subcategory.fromDatabase(result.rows[0]);
             logger.info('Updated subcategory', {subcategory: updatedSubcategory});
+
+            // Notify household members about the updated category
+            await this.notificationService.notifyHouseholdMembers(
+                householdId,
+                `Subcategoría actualizada: ${updatedSubcategory.name}`
+            );
+
             return updatedSubcategory;
         } catch (error) {
             logger.error('Error updating subcategory', {error: error});
@@ -76,6 +93,12 @@ export class SubcategoryService {
                 return null;
             }
             logger.info('Deleted subcategory', {id, householdId, rowCount: result.rowCount});
+
+            // Notify household members about the deleted subcategory
+            await this.notificationService.notifyHouseholdMembers(
+                householdId,
+                `Subcategoría eliminada: ID ${id}`,
+            );
             return result.rowCount;
         } catch (error) {
             logger.error('Error deleting subcategory', {error: error});

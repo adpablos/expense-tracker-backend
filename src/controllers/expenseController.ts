@@ -12,7 +12,6 @@ import {analyzeTranscription, processReceipt, transcribeAudio} from '../services
 import path from 'path';
 import {AppError} from '../utils/AppError';
 import {promisify} from 'util';
-import {NotificationService} from "../services/external/notificationService";
 
 const expenseService = new ExpenseService(pool);
 
@@ -62,7 +61,7 @@ export const addExpense = async (req: Request, res: Response, next: NextFunction
             req.currentHouseholdId,
             new Date(expenseDatetime)
         );
-        const createdExpense = await expenseService.createExpense(newExpense);
+        const createdExpense = await expenseService.createExpense(newExpense, req.user!.id);
         res.status(201).json(createdExpense);
     } catch (error) {
         logger.error('Error adding expense', { error });
@@ -81,7 +80,7 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
             subcategory,
             expenseDatetime: new Date(expenseDatetime),
             householdId: req.currentHouseholdId
-        }, req.currentHouseholdId);
+        }, req.currentHouseholdId, req.user!.id);
         if (!updatedExpense) {
             return res.status(404).json({ message: 'Expense not found' });
         }
@@ -95,7 +94,7 @@ export const updateExpense = async (req: Request, res: Response, next: NextFunct
 export const deleteExpense = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        await expenseService.deleteExpense(id, req.currentHouseholdId);
+        await expenseService.deleteExpense(id, req.currentHouseholdId, req.user!.id);
         res.status(204).send();
     } catch (error) {
         logger.error('Error deleting expense', { error });
@@ -134,7 +133,7 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         let expenseDetails;
         if (req.file.mimetype.startsWith('image')) {
             const base64Image = encodeImage(newFilePath);
-            expenseDetails = await processReceipt(base64Image, householdId);
+            expenseDetails = await processReceipt(base64Image, householdId, req.user!.id);
         } else if (req.file.mimetype.startsWith('audio')) {
             // Convert to WAV format
             wavFilePath = `${newFilePath}.wav`;
@@ -147,7 +146,7 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
             });
 
             const transcription = await transcribeAudio(wavFilePath);
-            expenseDetails = await analyzeTranscription(transcription, householdId);
+            expenseDetails = await analyzeTranscription(transcription, householdId, req.user!.id);
         } else {
             throw new AppError('Unsupported file type', 400);
         }

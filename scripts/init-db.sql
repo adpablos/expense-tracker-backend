@@ -72,8 +72,3 @@ CREATE INDEX IF NOT EXISTS idx_subcategories_household_id ON subcategories(house
 CREATE INDEX IF NOT EXISTS idx_subcategories_category_id ON subcategories(category_id);
 CREATE INDEX IF NOT EXISTS idx_household_members_household_id ON household_members(household_id);
 CREATE INDEX IF NOT EXISTS idx_household_members_user_id ON household_members(user_id);
-
--- Create a default household (optional, depending on your application logic)
-INSERT INTO households (id, name)
-VALUES ('00000000-0000-0000-0000-000000000000', 'Default Household')
-ON CONFLICT (id) DO NOTHING;

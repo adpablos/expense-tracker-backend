@@ -9,7 +9,7 @@ import OpenAI from "openai";
 const expenseService = new ExpenseService(pool);
 const categoryHierarchyService = new CategoryHierarchyService(pool);
 
-async function extracted(functionCall: OpenAI.ChatCompletionMessageToolCall.Function | undefined, householdId: string) {
+async function extracted(functionCall: OpenAI.ChatCompletionMessageToolCall.Function | undefined, householdId: string, userId: string) {
     if (functionCall && functionCall.name === "log_expense") {
         const {date, amount, category, subcategory, notes} = JSON.parse(functionCall.arguments);
 
@@ -22,14 +22,14 @@ async function extracted(functionCall: OpenAI.ChatCompletionMessageToolCall.Func
             new Date(date)
         );
 
-        await expenseService.createExpense(newExpense);
+        await expenseService.createExpense(newExpense, userId);
         return newExpense;
     } else {
         return null;
     }
 }
 
-export const processReceipt = async (base64Image: string, householdId: string) => {
+export const processReceipt = async (base64Image: string, householdId: string, userId: string) => {
     const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories(householdId);
     const currentDate = new Date().toISOString();
 
@@ -99,7 +99,7 @@ export const processReceipt = async (base64Image: string, householdId: string) =
     });
 
     const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
-    return await extracted(functionCall, householdId);
+    return await extracted(functionCall, householdId, userId);
 };
 
 export const transcribeAudio = async (filePath: string): Promise<string> => {
@@ -117,7 +117,7 @@ export const transcribeAudio = async (filePath: string): Promise<string> => {
     return transcription.text;
 };
 
-export const analyzeTranscription = async (transcription: string, householdId: string): Promise<Expense | null> => {
+export const analyzeTranscription = async (transcription: string, householdId: string, userId: string): Promise<Expense | null> => {
     const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories(householdId);
     const currentDate = new Date().toISOString();
 
@@ -181,5 +181,5 @@ export const analyzeTranscription = async (transcription: string, householdId: s
     });
 
     const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
-    return await extracted(functionCall, householdId);
+    return await extracted(functionCall, householdId, userId);
 };

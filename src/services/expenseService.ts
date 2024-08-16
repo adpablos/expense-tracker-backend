@@ -2,6 +2,7 @@ import {Pool} from 'pg';
 import {Expense} from '../models/Expense';
 import {AppError} from '../utils/AppError';
 import logger from '../config/logger';
+import {NotificationService} from "./external/notificationService";
 
 interface ExpenseFilters {
     startDate?: Date;
@@ -17,9 +18,11 @@ interface ExpenseFilters {
 
 export class ExpenseService {
     private db: Pool;
+    private notificationService: NotificationService;
 
     constructor(db: Pool) {
         this.db = db;
+        this.notificationService = new NotificationService();
     }
 
     async getExpenses(filters: ExpenseFilters): Promise<{ expenses: Expense[], totalItems: number }> {
@@ -101,7 +104,7 @@ export class ExpenseService {
 
 
 
-    async createExpense(expense: Expense): Promise<Expense> {
+    async createExpense(expense: Expense, userId: string): Promise<Expense> {
         logger.info('Creating expense', { expense: expense.description });
 
         const errors = expense.validate();
@@ -127,6 +130,13 @@ export class ExpenseService {
             );
             const createdExpense = Expense.fromDatabase(result.rows[0]);
             logger.info('Created expense', { expense: createdExpense });
+
+            // Notify household members about the new expense
+            await this.notificationService.notifyHouseholdMembers(
+                expense.householdId,
+                `Nuevo gasto creado: ${expense.description} - ${expense.amount}`,
+                userId
+            );
             return createdExpense;
         } catch (error) {
             logger.error('Error creating expense', { error: error });
@@ -134,7 +144,7 @@ export class ExpenseService {
         }
     }
 
-    async updateExpense(id: string, expenseData: Partial<Expense>, householdId: string): Promise<Expense> {
+    async updateExpense(id: string, expenseData: Partial<Expense>, householdId: string, userId: string): Promise<Expense> {
         logger.info('Updating expense', { id, expenseData, householdId });
 
         const currentExpense = await this.getExpenseById(id, householdId);
@@ -185,6 +195,14 @@ export class ExpenseService {
 
             const updatedExpenseData = Expense.fromDatabase(result.rows[0]);
             logger.info('Updated expense', { expense: updatedExpenseData });
+
+            // Notify household members about the updated expense
+            await this.notificationService.notifyHouseholdMembers(
+                householdId,
+                `Gasto actualizado: ${updatedExpenseData.description} - ${updatedExpenseData.amount}`,
+                userId
+            );
+
             return updatedExpenseData;
         } catch (error) {
             logger.error('Error updating expense', { error: error, householdId });
@@ -193,7 +211,7 @@ export class ExpenseService {
         }
     }
 
-    async deleteExpense(id: string, householdId: string): Promise<void> {
+    async deleteExpense(id: string, householdId: string, userId: string): Promise<void> {
         logger.info('Deleting expense', { id, householdId });
         try {
             const result = await this.db.query('DELETE FROM expenses WHERE id = $1 AND household_id = $2 RETURNING *', [id, householdId]);
@@ -202,6 +220,13 @@ export class ExpenseService {
                 throw new AppError('Expense not found', 404);
             }
             logger.info('Deleted expense', { id, householdId });
+
+            // Notify household members about the deleted expense
+            await this.notificationService.notifyHouseholdMembers(
+                householdId,
+                `Gasto eliminado: ID ${id}`,
+                userId
+            );
         } catch (error) {
             logger.error('Error deleting expense', { error: error, householdId });
             if (error instanceof AppError) throw error;

@@ -2,12 +2,15 @@ import {Pool} from 'pg';
 import {Category} from '../models/Category';
 import {AppError} from '../utils/AppError';
 import logger from '../config/logger';
+import {NotificationService} from "./external/notificationService";
 
 export class CategoryService {
     private db: Pool;
+    private notificationService: NotificationService;
 
     constructor(db: Pool) {
         this.db = db;
+        this.notificationService = new NotificationService();
     }
 
     async getAllCategories(householdId: string): Promise<Category[]> {
@@ -40,6 +43,13 @@ export class CategoryService {
             );
             const createdCategory = Category.fromDatabase(result.rows[0]);
             logger.info('Created category', { category: createdCategory });
+
+            // Notify household members about the new category
+            await this.notificationService.notifyHouseholdMembers(
+                category.householdId,
+                `Nueva categoría creada: ${category.name}`
+            );
+
             return createdCategory;
         } catch (error) {
             logger.error('Error creating category', { error: error });
@@ -60,6 +70,13 @@ export class CategoryService {
             }
             const updatedCategory = Category.fromDatabase(result.rows[0]);
             logger.info('Updated category', {category: updatedCategory});
+
+            // Notify household members about the updated category
+            await this.notificationService.notifyHouseholdMembers(
+                householdId,
+                `Categoría actualizada: ${updatedCategory.name}`
+            );
+
             return updatedCategory;
         } catch (error) {
             logger.error('Error updating category', {error: error});
@@ -75,6 +92,13 @@ export class CategoryService {
                 [id, householdId]
             );
             logger.info('Deleted category', { id, householdId, rowCount: result.rowCount });
+
+            // Notify household members about the deleted category
+            await this.notificationService.notifyHouseholdMembers(
+                householdId,
+                `Categoría eliminada: ID ${id}`,
+            );
+
             return result.rowCount;
         } catch (error: any) {
             if (error.code === '23503') {
