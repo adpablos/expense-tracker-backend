@@ -50,6 +50,179 @@ export const options = {
                     bearerFormat: 'JWT',
                 },
             },
+            schemas: {
+                Category: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            description: 'The unique identifier for the category'
+                        },
+                        name: {
+                            type: 'string',
+                            description: 'The name of the category'
+                        },
+                        householdId: {
+                            type: 'string',
+                            description: 'The ID of the household this category belongs to'
+                        }
+                    }
+                },
+                Subcategory: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            description: 'The unique identifier for the subcategory'
+                        },
+                        name: {
+                            type: 'string',
+                            description: 'The name of the subcategory'
+                        },
+                        categoryId: {
+                            type: 'string',
+                            description: 'The ID of the parent category'
+                        },
+                        householdId: {
+                            type: 'string',
+                            description: 'The ID of the household this subcategory belongs to'
+                        }
+                    }
+                },
+                Expense: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            description: 'The unique identifier for the expense'
+                        },
+                        description: {
+                            type: 'string',
+                            description: 'A brief description of the expense'
+                        },
+                        amount: {
+                            type: 'number',
+                            description: 'The amount of the expense'
+                        },
+                        category: {
+                            type: 'string',
+                            description: 'The category of the expense'
+                        },
+                        subcategory: {
+                            type: 'string',
+                            description: 'The subcategory of the expense'
+                        },
+                        expenseDatetime: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'The date and time when the expense occurred'
+                        },
+                        householdId: {
+                            type: 'string',
+                            description: 'The ID of the household this expense belongs to'
+                        },
+                        createdAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'The date and time when the expense was created'
+                        },
+                        updatedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'The date and time when the expense was last updated'
+                        }
+                    }
+                },
+                User: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            description: 'The unique identifier for the user'
+                        },
+                        email: {
+                            type: 'string',
+                            format: 'email',
+                            description: 'The email address of the user'
+                        },
+                        name: {
+                            type: 'string',
+                            description: 'The name of the user'
+                        },
+                        authProviderId: {
+                            type: 'string',
+                            description: 'The ID provided by the authentication provider'
+                        },
+                        households: {
+                            type: 'array',
+                            items: {
+                                type: 'string'
+                            },
+                            description: 'An array of household IDs the user belongs to'
+                        }
+                    }
+                },
+                Household: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            description: 'The unique identifier for the household'
+                        },
+                        name: {
+                            type: 'string',
+                            description: 'The name of the household'
+                        },
+                        createdAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'The date and time when the household was created'
+                        },
+                        updatedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'The date and time when the household was last updated'
+                        }
+                    }
+                },
+                HouseholdMember: {
+                    type: 'object',
+                    properties: {
+                        id: {
+                            type: 'string',
+                            description: 'The unique identifier for the household member relationship'
+                        },
+                        householdId: {
+                            type: 'string',
+                            description: 'The ID of the household'
+                        },
+                        userId: {
+                            type: 'string',
+                            description: 'The ID of the user'
+                        },
+                        role: {
+                            type: 'string',
+                            enum: ['owner', 'member'],
+                            description: 'The role of the user in the household'
+                        },
+                        status: {
+                            type: 'string',
+                            enum: ['active', 'invited', 'removed'],
+                            description: 'The status of the user in the household'
+                        },
+                        createdAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'The date and time when the member was added to the household'
+                        },
+                        updatedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'The date and time when the member\'s status was last updated'
+                        }
+                    }
+                }
+            }
         },
         security: [{
             bearerAuth: [],

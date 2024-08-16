@@ -30,7 +30,7 @@ async function extracted(functionCall: OpenAI.ChatCompletionMessageToolCall.Func
 }
 
 export const processReceipt = async (base64Image: string, householdId: string) => {
-    const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories();
+    const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories(householdId);
     const currentDate = new Date().toISOString();
 
     const response = await clientOpenAI.chat.completions.create({
@@ -118,7 +118,7 @@ export const transcribeAudio = async (filePath: string): Promise<string> => {
 };
 
 export const analyzeTranscription = async (transcription: string, householdId: string): Promise<Expense | null> => {
-    const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories();
+    const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories(householdId);
     const currentDate = new Date().toISOString();
 
     const response = await clientOpenAI.chat.completions.create({

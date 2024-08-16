@@ -8,37 +8,62 @@ import {
 import requestLogger from "../middleware/requestLogger";
 import responseLogger from "../middleware/responseLogger";
 import {attachUser, authMiddleware} from "../middleware/authMiddleware";
+import {ensureHouseholdSelected, setCurrentHousehold} from "../middleware/householdMiddleware";
+import {HouseholdService} from "../services/householdService";
+import pool from "../config/db";
 
 const router = express.Router();
+const householdService = new HouseholdService(pool);
 
 router.use(requestLogger);
 router.use(responseLogger);
 router.use(authMiddleware);
 router.use(attachUser);
+router.use(setCurrentHousehold(householdService));
+router.use(ensureHouseholdSelected);
 
 /**
  * @swagger
  * tags:
  *   name: Subcategories
- *   description: API for managing expense subcategories
+ *   description: Expense subcategory management
  */
 
 /**
  * @swagger
  * /api/subcategories:
  *   get:
- *     tags: [Subcategories]
  *     summary: Retrieve all subcategories
- *     description: Fetch a comprehensive list of all available expense subcategories.
+ *     tags: [Subcategories]
+ *     description: |
+ *       Fetches a comprehensive list of all available expense subcategories for the specified household or the user's default household.
+ *       Subcategories are used to further organize expenses within categories.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household to fetch subcategories for. If not provided, the user's default household will be used.
  *     responses:
  *       200:
- *         description: A list of subcategories.
+ *         description: A list of subcategories successfully retrieved
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Subcategory'
+ *       400:
+ *         description: Bad request - invalid household ID or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
+ *       500:
+ *         description: Server error - failed to retrieve subcategories
  */
 router.get('/', getSubcategories);
 
@@ -46,9 +71,20 @@ router.get('/', getSubcategories);
  * @swagger
  * /api/subcategories:
  *   post:
- *     tags: [Subcategories]
  *     summary: Create a new subcategory
- *     description: Add a new subcategory to organize your expenses under a specific category. Each subcategory must have a unique name and a valid category ID.
+ *     tags: [Subcategories]
+ *     description: |
+ *       Adds a new subcategory to organize expenses under a specific category within a household or the user's default household.
+ *       Each subcategory must have a unique name within its parent category in the household.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household to create the subcategory in. If not provided, the user's default household will be used.
  *     requestBody:
  *       required: true
  *       content:
@@ -61,17 +97,27 @@ router.get('/', getSubcategories);
  *             properties:
  *               name:
  *                 type: string
- *                 description: The name of the subcategory.
+ *                 description: The name of the subcategory (must be unique within the category in the household)
  *               categoryId:
  *                 type: string
- *                 description: The ID of the category this subcategory belongs to.
+ *                 description: The ID of the parent category for this subcategory
  *     responses:
  *       201:
- *         description: The subcategory was successfully created.
+ *         description: Subcategory successfully created
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Subcategory'
+ *       400:
+ *         description: Bad request - invalid input, duplicate subcategory name, invalid category ID, or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
+ *       404:
+ *         description: Not found - the specified parent category does not exist
+ *       500:
+ *         description: Server error - failed to create subcategory
  */
 router.post('/', addSubcategory);
 
@@ -79,16 +125,26 @@ router.post('/', addSubcategory);
  * @swagger
  * /api/subcategories/{id}:
  *   put:
- *     tags: [Subcategories]
  *     summary: Update an existing subcategory
- *     description: Modify the details of an existing subcategory by its ID. Only the name and category ID can be changed.
+ *     tags: [Subcategories]
+ *     description: |
+ *       Modifies the details of an existing subcategory by its ID within a specific household or the user's default household.
+ *       The name of the subcategory and its parent category can be changed.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: The unique ID of the subcategory.
+ *         description: The unique ID of the subcategory to update
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household the subcategory belongs to. If not provided, the user's default household will be used.
  *     requestBody:
  *       required: true
  *       content:
@@ -98,19 +154,27 @@ router.post('/', addSubcategory);
  *             properties:
  *               name:
  *                 type: string
- *                 description: The new name of the subcategory.
+ *                 description: The new name for the subcategory (must be unique within the category in the household)
  *               categoryId:
  *                 type: string
- *                 description: The ID of the category this subcategory belongs to.
+ *                 description: The ID of the new parent category for this subcategory (if changing categories)
  *     responses:
  *       200:
- *         description: The subcategory was successfully updated.
+ *         description: Subcategory successfully updated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Subcategory'
+ *       400:
+ *         description: Bad request - invalid input, duplicate subcategory name, invalid category ID, or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
  *       404:
- *         description: The subcategory with the specified ID was not found.
+ *         description: Not found - the specified subcategory or new parent category does not exist
+ *       500:
+ *         description: Server error - failed to update subcategory
  */
 router.put('/:id', updateSubcategory);
 
@@ -118,21 +182,39 @@ router.put('/:id', updateSubcategory);
  * @swagger
  * /api/subcategories/{id}:
  *   delete:
- *     tags: [Subcategories]
  *     summary: Delete a subcategory
- *     description: Remove an existing subcategory by its ID. Note that this action cannot be undone.
+ *     tags: [Subcategories]
+ *     description: |
+ *       Removes an existing subcategory by its ID from a specific household or the user's default household.
+ *       Note: This action cannot be undone. All expenses associated with this subcategory will have their subcategory set to null.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: The unique ID of the subcategory.
+ *         description: The unique ID of the subcategory to delete
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household the subcategory belongs to. If not provided, the user's default household will be used.
  *     responses:
  *       204:
- *         description: The subcategory was successfully deleted.
+ *         description: Subcategory successfully deleted
+ *       400:
+ *         description: Bad request - invalid subcategory ID or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
  *       404:
- *         description: The subcategory with the specified ID was not found.
+ *         description: Not found - the specified subcategory does not exist in the household
+ *       500:
+ *         description: Server error - failed to delete subcategory
  */
 router.delete('/:id', deleteSubcategory);
 

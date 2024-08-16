@@ -5,18 +5,24 @@ export class User {
     public email: string;
     public name: string;
     public authProviderId: string;
-    public householdId: string | null;
+    public households: string[];
 
-    constructor(email: string, name: string, authProviderId: string, householdId: string | null = null, id?: string) {
+    constructor(email: string, name: string, authProviderId: string, id?: string, households: string[] = []) {
         this.id = id || uuidv4();
         this.email = email;
         this.name = name;
         this.authProviderId = authProviderId;
-        this.householdId = householdId;
+        this.households = households;
     }
 
     static fromDatabase(data: any): User {
-        return new User(data.email, data.name, data.auth_provider_id, data.household_id, data.id);
+        return new User(
+            data.email,
+            data.name,
+            data.auth_provider_id,
+            data.id,
+            data.households || []
+        );
     }
 
     toDatabase(): any {
@@ -25,7 +31,7 @@ export class User {
             email: this.email,
             name: this.name,
             auth_provider_id: this.authProviderId,
-            household_id: this.householdId
+            households: this.households
         };
     }
 
@@ -35,5 +41,15 @@ export class User {
         if (!this.name) errors.push('Name is required');
         if (!this.authProviderId) errors.push('Auth provider ID is required');
         return errors;
+    }
+
+    addHousehold(householdId: string) {
+        if (!this.households.includes(householdId)) {
+            this.households.push(householdId);
+        }
+    }
+
+    removeHousehold(householdId: string) {
+        this.households = this.households.filter(id => id !== householdId);
     }
 }

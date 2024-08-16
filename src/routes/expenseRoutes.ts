@@ -6,8 +6,12 @@ import {AppError} from "../utils/AppError";
 import requestLogger from "../middleware/requestLogger";
 import responseLogger from "../middleware/responseLogger";
 import { authMiddleware, attachUser } from '../middleware/authMiddleware';
+import {HouseholdService} from "../services/householdService";
+import pool from "../config/db";
+import {ensureHouseholdSelected, setCurrentHousehold} from "../middleware/householdMiddleware";
 
 const router = express.Router();
+const householdService = new HouseholdService(pool);
 const upload = multer({
     dest: 'uploads/',
     limits: {fileSize: 5 * 1024 * 1024}, // 5MB max file size
@@ -28,94 +32,107 @@ router.use(requestLogger);
 router.use(responseLogger);
 router.use(authMiddleware);
 router.use(attachUser);
+router.use(setCurrentHousehold(householdService));
+router.use(ensureHouseholdSelected);
 
 /**
  * @swagger
  * tags:
  *   name: Expenses
- *   description: API for managing expenses
+ *   description: Expense management and tracking
  */
 
 /**
  * @swagger
  * /api/expenses:
  *   get:
- *     tags:
- *       - Expenses
  *     summary: Retrieve all expenses
- *     description: Get a detailed list of all recorded expenses, with optional filters and pagination.
+ *     tags: [Expenses]
+ *     description: |
+ *       Fetches a detailed list of all recorded expenses for the specified household or the user's default household.
+ *       Supports pagination and various filter options to narrow down the results.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household to fetch expenses for. If not provided, the user's default household will be used.
  *       - in: query
  *         name: startDate
  *         schema:
  *           type: string
  *           format: date-time
- *           example: "2024-08-09T00:00:00Z"
- *         description: The start date to filter expenses (ISO 8601 format).
+ *         description: The start date to filter expenses (inclusive, ISO 8601 format)
  *       - in: query
  *         name: endDate
  *         schema:
  *           type: string
  *           format: date-time
- *           example: "2024-08-09T23:59:59Z"
- *         description: The end date to filter expenses (ISO 8601 format).
+ *         description: The end date to filter expenses (inclusive, ISO 8601 format)
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
- *         description: Filter by category.
+ *         description: Filter expenses by category name
  *       - in: query
  *         name: subcategory
  *         schema:
  *           type: string
- *         description: Filter by subcategory.
+ *         description: Filter expenses by subcategory name
  *       - in: query
  *         name: amount
  *         schema:
  *           type: number
- *         description: Filter by amount.
+ *         description: Filter expenses by exact amount
  *       - in: query
  *         name: description
  *         schema:
  *           type: string
- *         description: Filter by description (partial match).
+ *         description: Filter expenses by description (partial match)
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
+ *           minimum: 1
  *           default: 1
- *         description: The page number for pagination (must be a positive integer).
+ *         description: The page number for pagination
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 100
  *           default: 10
- *         description: The number of expenses per page (must be a positive integer).
+ *         description: The number of expenses per page
  *     responses:
  *       200:
- *         description: A list of expenses with pagination details.
+ *         description: A list of expenses with pagination details
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 page:
- *                   type: integer
- *                   description: The current page number.
- *                 totalPages:
- *                   type: integer
- *                   description: The total number of pages.
- *                 nextPage:
- *                   type: integer
- *                   nullable: true
- *                   description: The next page number, if available.
- *                 totalItems:
- *                   type: integer
- *                   description: The total number of items.
  *                 expenses:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Expense'
+ *                 page:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 totalItems:
+ *                   type: integer
+ *       400:
+ *         description: Bad request - invalid query parameters or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
+ *       500:
+ *         description: Server error - failed to retrieve expenses
  */
 router.get('/', getExpenses);
 
@@ -124,79 +141,66 @@ router.get('/', getExpenses);
  * /api/expenses:
  *   post:
  *     summary: Add a new expense
- *     description: Adds a new expense to the system with the given details.
- *     tags:
- *       - Expenses
+ *     tags: [Expenses]
+ *     description: |
+ *       Adds a new expense to the system for the specified household or the user's default household.
+ *       The expense must be associated with a valid category and subcategory.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household to add the expense to. If not provided, the user's default household will be used.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - description
+ *               - amount
+ *               - category
+ *               - subcategory
+ *               - expenseDatetime
  *             properties:
  *               description:
  *                 type: string
- *                 example: "Compra en supermercado"
+ *                 description: A brief description of the expense
  *               amount:
  *                 type: number
- *                 example: 75.00
+ *                 format: float
+ *                 description: The amount of the expense (must be positive)
  *               category:
  *                 type: string
- *                 example: "Alimentación"
+ *                 description: The name of the category for this expense
  *               subcategory:
  *                 type: string
- *                 example: "Supermercado"
+ *                 description: The name of the subcategory for this expense
  *               expenseDatetime:
  *                 type: string
  *                 format: date-time
- *                 example: "2024-08-09T13:24:00-04:00"
+ *                 description: The date and time when the expense occurred (ISO 8601 format)
  *     responses:
  *       201:
- *         description: Expense created successfully
+ *         description: Expense successfully created
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                 description:
- *                   type: string
- *                 amount:
- *                   type: number
- *                 category:
- *                   type: string
- *                 subcategory:
- *                   type: string
- *                 expenseDatetime:
- *                   type: string
- *                   format: date-time
- *                 createdAt:
- *                   type: string
- *                   format: date-time
- *                 updatedAt:
- *                   type: string
- *                   format: date-time
+ *               $ref: '#/components/schemas/Expense'
  *       400:
- *         description: Invalid input data
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as '2024-08-09T14:30:00Z' or '2024-08-09T14:30:00-04:00'."
+ *         description: Bad request - invalid input data or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
+ *       404:
+ *         description: Not found - specified category or subcategory does not exist
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Error creating expense"
+ *         description: Server error - failed to create expense
  */
 router.post('/', addExpense);
 
@@ -205,16 +209,25 @@ router.post('/', addExpense);
  * /api/expenses/{id}:
  *   put:
  *     summary: Update an existing expense
- *     description: Updates the details of an existing expense by its ID.
- *     tags:
- *       - Expenses
+ *     tags: [Expenses]
+ *     description: |
+ *       Updates the details of an existing expense by its ID within a specific household or the user's default household.
+ *       All fields of the expense can be modified.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: The unique ID of the expense to update.
  *         schema:
  *           type: string
+ *         description: The unique ID of the expense to update
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household the expense belongs to. If not provided, the user's default household will be used.
  *     requestBody:
  *       required: true
  *       content:
@@ -224,77 +237,38 @@ router.post('/', addExpense);
  *             properties:
  *               description:
  *                 type: string
- *                 example: "Compra en supermercado"
+ *                 description: A brief description of the expense
  *               amount:
  *                 type: number
- *                 example: 75.00
+ *                 format: float
+ *                 description: The amount of the expense (must be positive)
  *               category:
  *                 type: string
- *                 example: "Alimentación"
+ *                 description: The name of the category for this expense
  *               subcategory:
  *                 type: string
- *                 example: "Supermercado"
- *               expense_datetime:
+ *                 description: The name of the subcategory for this expense
+ *               expenseDatetime:
  *                 type: string
  *                 format: date-time
- *                 example: "2024-08-09T13:24:00-04:00"
+ *                 description: The date and time when the expense occurred (ISO 8601 format)
  *     responses:
  *       200:
- *         description: Expense updated successfully
+ *         description: Expense successfully updated
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                 description:
- *                   type: string
- *                 amount:
- *                   type: number
- *                 category:
- *                   type: string
- *                 subcategory:
- *                   type: string
- *                 expense_datetime:
- *                   type: string
- *                   format: date-time
- *                 created_at:
- *                   type: string
- *                   format: date-time
- *                 updated_at:
- *                   type: string
- *                   format: date-time
+ *               $ref: '#/components/schemas/Expense'
  *       400:
- *         description: Invalid input data
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Invalid expense datetime format. Please provide the datetime in ISO 8601 format, such as '2024-08-09T14:30:00Z' or '2024-08-09T14:30:00-04:00'."
+ *         description: Bad request - invalid input data or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
  *       404:
- *         description: Expense not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Expense not found"
+ *         description: Not found - the specified expense, category, or subcategory does not exist
  *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Error updating expense"
+ *         description: Server error - failed to update expense
  */
 router.put('/:id', updateExpense);
 
@@ -302,21 +276,39 @@ router.put('/:id', updateExpense);
  * @swagger
  * /api/expenses/{id}:
  *   delete:
- *     tags: [Expenses]
  *     summary: Delete an expense
- *     description: Remove an existing expense by its ID. Note that this action cannot be undone.
+ *     tags: [Expenses]
+ *     description: |
+ *       Removes an existing expense by its ID from a specific household or the user's default household.
+ *       This action cannot be undone.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
- *         description: The unique ID of the expense.
+ *         description: The unique ID of the expense to delete
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household the expense belongs to. If not provided, the user's default household will be used.
  *     responses:
  *       204:
- *         description: The expense was successfully deleted.
+ *         description: Expense successfully deleted
+ *       400:
+ *         description: Bad request - invalid expense ID or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
  *       404:
- *         description: The expense with the specified ID was not found.
+ *         description: Not found - the specified expense does not exist in the household
+ *       500:
+ *         description: Server error - failed to delete expense
  */
 router.delete('/:id', deleteExpense);
 
@@ -324,12 +316,23 @@ router.delete('/:id', deleteExpense);
  * @swagger
  * /api/expenses/upload:
  *   post:
+ *     summary: Upload and process an expense file
  *     tags: [Expenses]
- *     summary: Upload an expense file (image or audio) to log an expense using AI
- *     description: Upload an image or audio file to create a new expense entry. The file should be either an image (jpeg, jpg, png, webp, gif) or audio (flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm). The AI processes the uploaded file to automatically recognize and log the expense details, making data entry quick and effortless.
- *     consumes:
- *       - multipart/form-data
+ *     description: |
+ *       Uploads an image or audio file to create a new expense entry using AI processing.
+ *       The file should be either an image (jpeg, jpg, png, webp, gif) or audio (flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm).
+ *       The AI processes the uploaded file to automatically recognize and log the expense details, making data entry quick and effortless.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Household-Id
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: The ID of the household to add the expense to. If not provided, the user's default household will be used.
  *     requestBody:
+ *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
@@ -338,11 +341,10 @@ router.delete('/:id', deleteExpense);
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: The image or audio file to upload.
- *                 required: true
+ *                 description: The image or audio file to upload and process
  *     responses:
  *       200:
- *         description: The expense was successfully logged by the AI.
+ *         description: Expense successfully logged by AI
  *         content:
  *           application/json:
  *             schema:
@@ -350,14 +352,19 @@ router.delete('/:id', deleteExpense);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Expense logged successfully by AI.
+ *                   example: Expense logged successfully.
  *                 expense:
- *                   type: object
  *                   $ref: '#/components/schemas/Expense'
  *       400:
- *         description: No file uploaded or unsupported file type.
+ *         description: Bad request - no file uploaded, unsupported file type, or no default household found
+ *       401:
+ *         description: Unauthorized - user is not authenticated
+ *       403:
+ *         description: Forbidden - user does not have access to the specified household
+ *       422:
+ *         description: Unprocessable Entity - file was processed but no valid expense could be identified
  *       500:
- *         description: Error processing the file.
+ *         description: Server error - failed to process the file or create the expense
  */
 router.post('/upload', upload.single('file'), uploadExpense);
 

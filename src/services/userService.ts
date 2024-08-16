@@ -1,13 +1,18 @@
-import { Pool } from 'pg';
+import { v4 as uuidv4 } from 'uuid';
+import {Pool, PoolClient} from 'pg';
 import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
 import logger from '../config/logger';
+import { HouseholdService } from './householdService';
+import {Household} from "../models/Household";
 
 export class UserService {
     private db: Pool;
+    private householdService: HouseholdService;
 
     constructor(db: Pool) {
         this.db = db;
+        this.householdService = new HouseholdService(db);
     }
 
     async createUser(user: User): Promise<User> {
@@ -22,8 +27,8 @@ export class UserService {
         try {
             const dbUser = user.toDatabase();
             const result = await this.db.query(
-                'INSERT INTO users (id, email, name, auth_provider_id, household_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-                [dbUser.id, dbUser.email, dbUser.name, dbUser.auth_provider_id, dbUser.household_id]
+                'INSERT INTO users (id, email, name, auth_provider_id) VALUES ($1, $2, $3, $4) RETURNING *',
+                [dbUser.id, dbUser.email, dbUser.name, dbUser.auth_provider_id]
             );
             const createdUser = User.fromDatabase(result.rows[0]);
             logger.info('Created user', { user: createdUser });
@@ -34,30 +39,10 @@ export class UserService {
                 stack: error.stack,
                 user: user
             });
-            if (error.code === '23505') {  // Código de error de PostgreSQL para violación de unicidad
+            if (error.code === '23505') {
                 throw new AppError('User with this email or auth provider ID already exists', 409);
             }
             throw new AppError(`Error creating user: ${error.message}`, 500);
-        }
-    }
-
-    async getUserByAuthProviderId(authProviderId: string): Promise<User | null> {
-        logger.info('Fetching user by auth provider ID', { authProviderId });
-        try {
-            const result = await this.db.query(
-                'SELECT * FROM users WHERE auth_provider_id = $1',
-                [authProviderId]
-            );
-            if (result.rows.length === 0) {
-                logger.info('User not found', { authProviderId });
-                return null;
-            }
-            const user = User.fromDatabase(result.rows[0]);
-            logger.info('Fetched user', { user });
-            return user;
-        } catch (error) {
-            logger.error('Error fetching user', { error: error });
-            throw new AppError('Error fetching user', 500);
         }
     }
 
@@ -65,34 +50,27 @@ export class UserService {
         logger.info('Updating user', { id, updates });
         try {
             const result = await this.db.query(
-                'UPDATE users SET email = $1, household_id = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
-                [updates.email, updates.householdId, id]
+                'UPDATE users SET email = $1, name = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
+                [updates.email, updates.name, id]
             );
             if (result.rows.length === 0) {
                 logger.warn('User not found', { id });
                 throw new AppError('User not found', 404);
             }
             const updatedUser = User.fromDatabase(result.rows[0]);
+
+            // Get all households the user is a member of
+            const householdsResult = await this.db.query(
+                'SELECT household_id FROM household_members WHERE user_id = $1',
+                [id]
+            );
+            updatedUser.households = householdsResult.rows.map(row => row.household_id);
+
             logger.info('Updated user', { user: updatedUser });
             return updatedUser;
         } catch (error) {
             logger.error('Error updating user', { error: error });
             throw new AppError('Error updating user', 500);
-        }
-    }
-
-    async deleteUser(id: string): Promise<void> {
-        logger.info('Deleting user', { id });
-        try {
-            const result = await this.db.query('DELETE FROM users WHERE id = $1', [id]);
-            if (result.rowCount === 0) {
-                logger.warn('User not found', { id });
-                throw new AppError('User not found', 404);
-            }
-            logger.info('Deleted user', { id });
-        } catch (error) {
-            logger.error('Error deleting user', { error: error });
-            throw new AppError('Error deleting user', 500);
         }
     }
 
@@ -117,22 +95,22 @@ export class UserService {
                 [dbUser.id, dbUser.email, dbUser.name, dbUser.auth_provider_id]
             );
 
-            // Create household
-            const householdResult = await client.query(
-                'INSERT INTO households (name) VALUES ($1) RETURNING id',
-                [householdName]
-            );
+            // Create household object
+            const newHousehold = new Household(householdName, uuidv4());
 
-            // Update user with household ID
-            const updatedUserResult = await client.query(
-                'UPDATE users SET household_id = $1 WHERE id = $2 RETURNING *',
-                [householdResult.rows[0].id, userResult.rows[0].id]
+            // Create household
+            const household = await this.householdService.createHousehold(newHousehold, userResult.rows[0].id);
+
+            // Update user with household ID (through household_members table)
+            await client.query(
+                'INSERT INTO household_members (id, household_id, user_id, role, status) VALUES ($1, $2, $3, $4, $5)',
+                [uuidv4(), household.id, userResult.rows[0].id, 'owner', 'active']
             );
 
             await client.query('COMMIT');
 
-            const createdUser = User.fromDatabase(updatedUserResult.rows[0]);
-            logger.info('Created user with household', { user: createdUser });
+            const createdUser = User.fromDatabase(userResult.rows[0]);
+            logger.info('Created user with household', { user: createdUser, householdId: household.id });
             return createdUser;
         } catch (error: any) {
             await client.query('ROLLBACK');
@@ -148,6 +126,142 @@ export class UserService {
             throw new AppError(`Error creating user with household: ${error.message}`, 500);
         } finally {
             client.release();
+        }
+    }
+
+    async getUserById(id: string): Promise<User | null> {
+        logger.info('Fetching user by ID', { id: id });
+        try {
+            const result = await this.db.query(
+                'SELECT * FROM users WHERE id = $1',
+                [id]
+            );
+            if (result.rows.length === 0) {
+                logger.info('User not found', { id: id });
+                return null;
+            }
+            const user = User.fromDatabase(result.rows[0]);
+            logger.info('Fetched user', { user });
+            return user;
+        } catch (error) {
+            logger.error('Error fetching user', { error: error });
+            throw new AppError('Error fetching user', 500);
+        }
+    }
+
+    async getUserByAuthProviderId(authProviderId: string): Promise<User | null> {
+        logger.info('Fetching user by auth provider ID', { authProviderId });
+        try {
+            const userResult = await this.db.query(
+                `SELECT u.*, array_agg(hm.household_id) as households
+                 FROM users u
+                 LEFT JOIN household_members hm ON u.id = hm.user_id
+                 WHERE u.auth_provider_id = $1
+                 GROUP BY u.id`,
+                [authProviderId]
+            );
+
+            if (userResult.rows.length === 0) {
+                logger.info('User not found', { authProviderId });
+                return null;
+            }
+
+            const userData = userResult.rows[0];
+            const user = new User(
+                userData.email,
+                userData.name,
+                userData.auth_provider_id,
+                userData.id,
+                userData.households.filter((h: string | null): h is string => h !== null) // Explicit type guard
+            );
+
+            logger.info('Fetched user', { user });
+            return user;
+        } catch (error) {
+            logger.error('Error fetching user', { error: error });
+            throw new AppError('Error fetching user', 500);
+        }
+    }
+
+    async deleteUser(id: string): Promise<void> {
+        logger.info('Deleting user', { id });
+        const client = await this.db.connect();
+        try {
+            await client.query('BEGIN');
+
+            const userHouseholds = await this.getUserHouseholds(client, id);
+            await this.handleUserHouseholds(client, id, userHouseholds);
+            await this.removeUserFromHouseholds(client, id);
+            await this.deleteUserRecord(client, id);
+
+            await client.query('COMMIT');
+            logger.info('Deleted user', { id });
+        } catch (error) {
+            await client.query('ROLLBACK');
+            logger.error('Error deleting user', { error: error });
+            throw new AppError('Error deleting user', 500);
+        } finally {
+            client.release();
+        }
+    }
+
+    private async getUserHouseholds(client: PoolClient, userId: string): Promise<any[]> {
+        const result = await client.query(
+            'SELECT hm.household_id, hm.role, h.name as household_name, ' +
+            '(SELECT COUNT(*) FROM household_members WHERE household_id = hm.household_id) as member_count ' +
+            'FROM household_members hm ' +
+            'JOIN households h ON h.id = hm.household_id ' +
+            'WHERE hm.user_id = $1',
+            [userId]
+        );
+        return result.rows;
+    }
+
+    private async handleUserHouseholds(client: PoolClient, userId: string, households: any[]): Promise<void> {
+        for (const household of households) {
+            if (household.member_count === '1') {
+                await this.deleteOrphanedHousehold(client, household.household_id, household.household_name);
+            } else if (household.role === 'owner') {
+                await this.transferHouseholdOwnership(client, userId, household.household_id, household.household_name);
+            }
+        }
+    }
+
+    private async deleteOrphanedHousehold(client: PoolClient, householdId: string, householdName: string): Promise<void> {
+        // Primero, eliminar todas las referencias en household_members
+        await client.query('DELETE FROM household_members WHERE household_id = $1', [householdId]);
+        // Luego, eliminar el hogar
+        await client.query('DELETE FROM households WHERE id = $1', [householdId]);
+        logger.info(`Deleted orphaned household ${householdName}`, { householdId });
+    }
+
+    private async transferHouseholdOwnership(client: PoolClient, currentOwnerId: string, householdId: string, householdName: string): Promise<void> {
+        const newOwnerResult = await client.query(
+            'SELECT user_id FROM household_members WHERE household_id = $1 AND user_id != $2 LIMIT 1',
+            [householdId, currentOwnerId]
+        );
+        if (newOwnerResult.rows.length > 0) {
+            const newOwnerId = newOwnerResult.rows[0].user_id;
+            await client.query(
+                'UPDATE household_members SET role = $1 WHERE household_id = $2 AND user_id = $3',
+                ['owner', householdId, newOwnerId]
+            );
+            logger.info(`Transferred ownership of household ${householdName}`, {
+                householdId,
+                newOwnerId
+            });
+        }
+    }
+
+    private async removeUserFromHouseholds(client: PoolClient, userId: string): Promise<void> {
+        await client.query('DELETE FROM household_members WHERE user_id = $1', [userId]);
+    }
+
+    private async deleteUserRecord(client: PoolClient, userId: string): Promise<void> {
+        const result = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+        if (result.rowCount === 0) {
+            logger.warn('User not found', { userId });
+            throw new AppError('User not found', 404);
         }
     }
 }

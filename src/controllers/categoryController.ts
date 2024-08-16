@@ -1,6 +1,7 @@
-import {NextFunction, Request, Response} from 'express';
-import {CategoryService} from '../services/categoryService';
-import {Category} from '../models/Category';
+// categoryController.ts
+import { Request, Response, NextFunction } from 'express';
+import { CategoryService } from '../services/categoryService';
+import { Category } from '../models/Category';
 import pool from '../config/db';
 import logger from '../config/logger';
 
@@ -8,7 +9,7 @@ const categoryService = new CategoryService(pool);
 
 export const getCategories = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const categories = await categoryService.getAllCategories();
+        const categories = await categoryService.getAllCategories(req.currentHouseholdId);
         res.json(categories);
     } catch (error) {
         logger.error('Error fetching categories: %s', error);
@@ -19,13 +20,7 @@ export const getCategories = async (req: Request, res: Response, next: NextFunct
 export const addCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { name } = req.body;
-        const householdId = req.user?.householdId;
-
-        if (!householdId) {
-            return res.status(400).json({ message: 'User does not belong to a household' });
-        }
-
-        const newCategory = new Category(name, householdId);
+        const newCategory = new Category(name, req.currentHouseholdId);
         const createdCategory = await categoryService.createCategory(newCategory);
         res.status(201).json(createdCategory);
     } catch (error) {
@@ -36,12 +31,11 @@ export const addCategory = async (req: Request, res: Response, next: NextFunctio
 
 export const updateCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {id} = req.params;
-        const {name} = req.body;
-        const updatedCategory = await categoryService.updateCategory(id, name);
+        const { id } = req.params;
+        const { name } = req.body;
+        const updatedCategory = await categoryService.updateCategory(id, name, req.currentHouseholdId);
         if (!updatedCategory) {
-            logger.warn('Category not found: %s', id);
-            return res.status(404).json({message: 'Category not found'});
+            return res.status(404).json({ message: 'Category not found' });
         }
         res.json(updatedCategory);
     } catch (error) {
@@ -56,13 +50,11 @@ export const deleteCategory = async (req: Request, res: Response, next: NextFunc
         const forceDelete = req.query.force === 'true';
 
         if (forceDelete) {
-            // Delete subcategories associated first
-            await categoryService.deleteSubcategoriesByCategoryId(id);
+            await categoryService.deleteSubcategoriesByCategoryId(id, req.currentHouseholdId);
         }
 
-        const result = await categoryService.deleteCategory(id);
+        const result = await categoryService.deleteCategory(id, req.currentHouseholdId);
         if (result === 0) {
-            logger.warn('Category not found: %s', id);
             return res.status(404).json({ message: 'Category not found' });
         }
         res.status(204).send();

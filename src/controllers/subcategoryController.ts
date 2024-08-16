@@ -1,6 +1,7 @@
-import {NextFunction, Request, Response} from 'express';
-import {SubcategoryService} from '../services/subcategoryService';
-import {Subcategory} from '../models/Subcategory';
+// subcategoryController.ts
+import { Request, Response, NextFunction } from 'express';
+import { SubcategoryService } from '../services/subcategoryService';
+import { Subcategory } from '../models/Subcategory';
 import pool from '../config/db';
 import logger from '../config/logger';
 
@@ -8,7 +9,7 @@ const subcategoryService = new SubcategoryService(pool);
 
 export const getSubcategories = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const subcategories = await subcategoryService.getAllSubcategories();
+        const subcategories = await subcategoryService.getAllSubcategories(req.currentHouseholdId);
         res.json(subcategories);
     } catch (error) {
         logger.error('Error fetching subcategories: %s', error);
@@ -18,14 +19,8 @@ export const getSubcategories = async (req: Request, res: Response, next: NextFu
 
 export const addSubcategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {name, categoryId} = req.body;
-        const householdId = req.user?.householdId;
-
-        if (!householdId) {
-            return res.status(400).json({ message: 'User does not belong to a household' });
-        }
-
-        const newSubcategory = new Subcategory(name, categoryId, householdId);
+        const { name, categoryId } = req.body;
+        const newSubcategory = new Subcategory(name, categoryId, req.currentHouseholdId);
         const createdSubcategory = await subcategoryService.createSubcategory(newSubcategory);
         res.status(201).json(createdSubcategory);
     } catch (error) {
@@ -36,12 +31,11 @@ export const addSubcategory = async (req: Request, res: Response, next: NextFunc
 
 export const updateSubcategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {id} = req.params;
-        const {name, categoryId} = req.body;
-        const updatedSubcategory = await subcategoryService.updateSubcategory(id, name, categoryId);
+        const { id } = req.params;
+        const { name, categoryId } = req.body;
+        const updatedSubcategory = await subcategoryService.updateSubcategory(id, name, categoryId, req.currentHouseholdId);
         if (!updatedSubcategory) {
-            logger.warn('Subcategory not found: %s', id);
-            return res.status(404).json({message: 'Subcategory not found'});
+            return res.status(404).json({ message: 'Subcategory not found' });
         }
         res.json(updatedSubcategory);
     } catch (error) {
@@ -52,11 +46,10 @@ export const updateSubcategory = async (req: Request, res: Response, next: NextF
 
 export const deleteSubcategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {id} = req.params;
-        const result = await subcategoryService.deleteSubcategory(id);
+        const { id } = req.params;
+        const result = await subcategoryService.deleteSubcategory(id, req.currentHouseholdId);
         if (result === 0) {
-            logger.warn('Subcategory not found: %s', id);
-            return res.status(404).json({message: 'Subcategory not found'});
+            return res.status(404).json({ message: 'Subcategory not found' });
         }
         res.status(204).send();
     } catch (error) {
