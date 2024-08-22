@@ -26,6 +26,7 @@ export class Category {
     validate(): string[] {
         const errors: string[] = [];
         if (!this.name) errors.push('Name is required');
+        if (!this.householdId) errors.push('Household ID is required');
         return errors;
     }
 }
