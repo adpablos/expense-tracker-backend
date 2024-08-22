@@ -36,7 +36,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     })(req, res, (err) => {
         if (err) {
             logger.error("JWT Error: ", err);
-            return res.status(401).json({ message: 'No authorization token was found' });
+            return res.status(401).json({ message: 'Invalid token', error: err.message });
         }
         logger.info("Token verified, proceeding...");
         next();

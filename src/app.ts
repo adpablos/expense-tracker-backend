@@ -39,7 +39,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/subcategories', subcategoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/households', householdRoutes);
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
     app.use('/auth-help', authHelperRoutes);
 }
 

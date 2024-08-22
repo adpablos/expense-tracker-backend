@@ -4,6 +4,8 @@ import logger from "../config/logger";
 
 const router = express.Router();
 
+export default router;
+
 /**
  * @swagger
  * /auth-help/get-token:
@@ -55,14 +57,21 @@ router.post('/get-token', async (req, res) => {
         });
 
         if (error.response) {
-            res.status(error.response.status).json({
-                error: 'Failed to obtain token',
-                details: error.response.data
-            });
+            // Auth0 specific error responses
+            if (error.response.status === 401 || error.response.status === 403) {
+                res.status(401).json({ message: 'Invalid credentials' });
+            } else {
+                res.status(error.response.status).json({
+                    error: 'Failed to obtain token',
+                    details: error.response.data
+                });
+            }
+        } else if (error.request) {
+            // The request was made but no response was received
+            res.status(500).json({ error: 'No response received from authentication server' });
         } else {
+            // Something happened in setting up the request that triggered an Error
             res.status(500).json({ error: 'Internal server error' });
         }
     }
 });
-
-export default router;

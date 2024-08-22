@@ -57,6 +57,9 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
         if (error instanceof AppError) {
             return res.status(error.statusCode).json({ status: 'error', message: error.message });
         }
+        if (error.code === '23505') {
+            return res.status(409).json({ status: 'error', message: 'Duplicate entry: User or Household already exists' });
+        }
         res.status(500).json({ status: 'error', message: 'An unexpected error occurred while registering the user' });
     }
 };
@@ -66,8 +69,11 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
         const { email, name } = req.body;
         const updatedUser = await userService.updateUser(req.user!.id, { email, name });
         res.json(updatedUser);
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Error updating user', { error });
+        if (error.code === '23505') {
+            return res.status(409).json({ message: 'Email already in use' });
+        }
         next(error);
     }
 };
