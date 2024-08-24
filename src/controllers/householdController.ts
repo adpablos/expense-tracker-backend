@@ -26,9 +26,15 @@ export const createHousehold = async (req: Request, res: Response, next: NextFun
         user.addHousehold(createdHousehold.id);
 
         res.status(201).json(createdHousehold);
-    } catch (error) {
+    } catch (error: any) {
         logger.error('Error creating household', { error });
-        next(error);
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({ message: error.message });
+        }
+        if (error.code === '23505') {
+            return res.status(409).json({ message: 'Duplicate entry: User or Household already exists' });
+        }
+        res.status(500).json({ message: 'An unexpected error occurred while creating the household' });
     }
 };
 

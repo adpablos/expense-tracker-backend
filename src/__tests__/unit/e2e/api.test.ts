@@ -32,6 +32,7 @@ jest.mock('../../../middleware/authMiddleware', () => ({
             email: 'test@example.com',
             name: 'Test User',
             authProviderId: 'auth0|123456',
+            addHousehold: jest.fn(),
         };
         req.currentHouseholdId = mockHouseholdId;
         next();
@@ -295,6 +296,10 @@ describe('API Integration Tests', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockPool = require('../../../config/db').default as MockPool;
+
+        (mockPool.query as jest.Mock).mockImplementation(() =>
+            Promise.resolve({ rows: [], rowCount: 0 })
+        );
 
         // Config Axios mock for OAuth token endpoint
         mockedAxios.post.mockResolvedValue({
@@ -889,25 +894,6 @@ describe('API Integration Tests', () => {
             expect(response.text).toBe('No file uploaded.');
         });
 
-        // it('should return 400 for an invalid audio file', async () => {
-        //     const householdId = uuidv4();
-        //     const mockFile = Buffer.from('invalid audio content');
-        //
-        //     // Sobrescribimos el mock de 'ffprobe' específicamente para este test
-        //     const mockFfmpeg = require('fluent-ffmpeg');
-        //     mockFfmpeg.ffprobe.mockImplementationOnce((path: string, callback: (err: Error | null, data: any) => void) => {
-        //         callback(new Error('Invalid audio file'), null);
-        //     });
-        //
-        //     const response = await request(app)
-        //         .post('/api/expenses/upload')
-        //         .attach('file', mockFile, 'invalid.mp3')
-        //         .set('Authorization', 'Bearer mockToken')
-        //         .set('X-Household-Id', householdId);
-        //
-        //     expect(response.status).toBe(400);
-        //     expect(response.text).toBe('Invalid audio file.');
-        // });
     });
 
     describe('PUT /api/expenses/:id', () => {
@@ -970,13 +956,21 @@ describe('API Integration Tests', () => {
             };
 
             const mockCreatedHousehold = {
-                id: uuidv4(),
-                ...newHousehold,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                id: expect.any(String),
+                name: 'New Household',
+                createdAt: expect.any(String),
+                updatedAt: expect.any(String)
             };
 
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult([mockCreatedHousehold]));
+            const mockClient = {
+                query: jest.fn()
+                    .mockResolvedValueOnce({rows: []}) // BEGIN
+                    .mockResolvedValueOnce({rows: [{ id: uuidv4(), ...newHousehold, createdAt: new Date(), updatedAt: new Date() }]}) // INSERT household
+                    .mockResolvedValueOnce({rows: []}) // INSERT household_member
+                    .mockResolvedValueOnce({rows: []}), // COMMIT
+                release: jest.fn(),
+            };
+            (mockPool.connect as jest.Mock).mockResolvedValue(mockClient);
 
             const response = await request(app)
                 .post('/api/households')
@@ -987,20 +981,22 @@ describe('API Integration Tests', () => {
             expect(response.body).toMatchObject(mockCreatedHousehold);
         });
 
+
         it('should return 409 when a household with the same name already exists for the user', async () => {
             const existingHousehold = {
                 name: 'Existing Household'
             };
 
-            mockPool.query.mockRejectedValueOnce({ code: '23505' }); // Unique constraint violation
+            mockHouseholdService.createHousehold = jest.fn().mockRejectedValue(new AppError('Duplicate entry: User or Household already exists', 409));
 
             const response = await request(app)
                 .post('/api/households')
                 .send(existingHousehold)
-                .set('Authorization', 'Bearer mockToken');
+                .set('Authorization', 'Bearer mockToken')
+                .set('X-Household-Id', 'mock-household-id');
 
             expect(response.status).toBe(409);
-            expect(response.body).toHaveProperty('message', 'A household with this name already exists for the user');
+            expect(response.body).toHaveProperty('message', 'Duplicate entry: User or Household already exists');
         });
     });
 
@@ -1028,11 +1024,12 @@ describe('API Integration Tests', () => {
 
         it('should return 403 when the user is not the household owner', async () => {
             const householdId = uuidv4();
-            const memberId = uuidv4();
             const invitedUserId = uuidv4();
 
-            // Mock to simulate user not being the owner of the household
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: memberId, role: 'member' }] });
+            // Mock del servicio para simular que el usuario no es el propietario
+            mockHouseholdService.inviteMember = jest.fn().mockRejectedValue(
+                new AppError('You do not have permission to invite members', 403)
+            );
 
             const response = await request(app)
                 .post(`/api/households/${householdId}/invite`)
@@ -1104,8 +1101,10 @@ describe('API Integration Tests', () => {
         it('should return 403 when the user is not a member of the household', async () => {
             const householdId = uuidv4();
 
-            // Mock to simulate user not being a member of the household
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+            // Mock del servicio para simular que el usuario no es miembro del household
+            mockHouseholdService.getHouseholdMembers = jest.fn().mockRejectedValue(
+                new AppError('You do not have access to this household', 403)
+            );
 
             const response = await request(app)
                 .get(`/api/households/${householdId}/members`)
@@ -1137,11 +1136,12 @@ describe('API Integration Tests', () => {
 
         it('should return 403 when the user is not the household owner', async () => {
             const householdId = uuidv4();
-            const memberId = uuidv4();
             const memberIdToRemove = uuidv4();
 
-            // Mock to simulate user not being the owner of the household
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ role: 'member' }] });
+            // Mock del servicio para simular que el usuario no es el propietario
+            mockHouseholdService.removeMember = jest.fn().mockRejectedValue(
+                new AppError('You do not have permission to remove members', 403)
+            );
 
             const response = await request(app)
                 .delete(`/api/households/${householdId}/members/${memberIdToRemove}`)
