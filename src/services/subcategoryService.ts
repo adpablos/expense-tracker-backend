@@ -51,8 +51,11 @@ export class SubcategoryService {
             );
 
             return createdSubcategory;
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Error creating subcategory', { error: error });
+            if (error.code === '23503') { // This is the PostgreSQL error code for foreign key violation
+                throw new AppError('Parent category not found', 404);
+            }
             throw new AppError('Error creating subcategory', 500);
         }
     }

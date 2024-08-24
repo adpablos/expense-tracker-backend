@@ -140,7 +140,10 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
             await new Promise<void>((resolve, reject) => {
                 ffmpeg(newFilePath)
                     .toFormat('wav')
-                    .on('error', reject)
+                    .on('error', (err) => {
+                        console.log('Error during audio conversion to WAV:', err);
+                        reject(err);
+                    })
                     .on('end', () => resolve())
                     .save(wavFilePath!);
             });
@@ -148,12 +151,14 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
             const transcription = await transcribeAudio(wavFilePath);
             expenseDetails = await analyzeTranscription(transcription, householdId, req.user!.id);
         } else {
+            logger.error('Unsupported file type:', req.file.mimetype);
             throw new AppError('Unsupported file type', 400);
         }
 
         if (expenseDetails) {
             res.status(200).json({message: 'Expense logged successfully.', expense: expenseDetails});
         } else {
+            logger.error('No expense could be logged from the file');
             res.status(422).json({
                 message: 'No expense logged.',
                 details: 'The file was processed successfully, but no valid expense could be identified.'

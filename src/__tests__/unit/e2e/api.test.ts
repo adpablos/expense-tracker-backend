@@ -3,7 +3,10 @@ import {Pool, QueryResult, QueryResultRow} from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import axios from "axios";
 import { CategoryService } from '../../../services/categoryService';
+import { SubcategoryService } from '../../../services/subcategoryService';
 import { NotificationService } from '../../../services/external/notificationService';
+import { ExpenseService } from '../../../services/expenseService';
+
 
 // Mock user and household Ids
 const mockUserId = 'd59c6410-45d8-4646-84be-6a24a14de81c';
@@ -76,6 +79,30 @@ jest.mock('../../../config/openaiConfig', () => ({
 }));
 
 jest.mock('axios');
+
+jest.mock('fluent-ffmpeg', () => {
+    const ffmpegMock = jest.fn().mockReturnValue({
+        toFormat: jest.fn().mockReturnThis(),
+        on: jest.fn().mockImplementation(function (this: any, event: string, callback: () => void) {
+            if (event === 'end') {
+                callback();
+            }
+            return this;
+        }),
+        save: jest.fn().mockImplementation((path: string, cb: () => void) => cb())
+    });
+
+    (ffmpegMock as any).ffprobe = jest.fn().mockImplementation((path: string, callback: (err: Error | null, data: any) => void) => {
+        callback(null, { format: { duration: '60' } });
+    });
+
+    (ffmpegMock as any).setFfmpegPath = jest.fn();
+    (ffmpegMock as any).setFfprobePath = jest.fn();
+
+    return ffmpegMock;
+});
+
+
 
 // Mock household service
 const createMockHouseholdService = () => ({
@@ -204,8 +231,30 @@ jest.mock('../../../services/external/notificationService');
 
 jest.mock('../../../services/categoryService');
 
+jest.mock('../../../services/subcategoryService');
+
+jest.mock('../../../services/expenseService');
+
+jest.mock('../../../services/external/openaiService');
+
+
 const mockCategoryService = {
     updateCategory: jest.fn(),
+};
+
+const mockSubcategoryService = {
+    getAllSubcategories: jest.fn(),
+    createSubcategory: jest.fn(),
+    updateSubcategory: jest.fn(),
+    deleteSubcategory: jest.fn(),
+};
+
+const mockExpenseService = {
+    getExpenses: jest.fn(),
+    createExpense: jest.fn(),
+    updateExpense: jest.fn(),
+    deleteExpense: jest.fn(),
+    uploadExpense: jest.fn(),
 };
 
 const mockNotificationService = {
@@ -213,6 +262,8 @@ const mockNotificationService = {
 };
 
 (CategoryService as jest.MockedClass<typeof CategoryService>).mockImplementation(() => mockCategoryService as any);
+(SubcategoryService as jest.MockedClass<typeof SubcategoryService>).mockImplementation(() => mockSubcategoryService as any);
+(ExpenseService as jest.MockedClass<typeof ExpenseService>).mockImplementation(() => mockExpenseService as any);
 (NotificationService as jest.MockedClass<typeof NotificationService>).mockImplementation(() => mockNotificationService as any);
 
 // Define a mock type for the Pool object
@@ -234,6 +285,7 @@ export function createMockQueryResult<T extends QueryResultRow>(rows: T[], rowCo
 // Import app and other necessary modules after all mocks are set up
 import app from "../../../app";
 import {Expense} from "../../../models/Expense";
+import {AppError} from "../../../utils/AppError";
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
@@ -521,7 +573,7 @@ describe('API Integration Tests', () => {
                 { id: uuidv4(), name: 'Subcategory 2', category_id: uuidv4(), household_id: householdId }
             ];
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: mockSubcategories });
+            mockSubcategoryService.getAllSubcategories = jest.fn().mockResolvedValue(mockSubcategories);
 
             const response = await request(app)
                 .get('/api/subcategories')
@@ -537,6 +589,7 @@ describe('API Integration Tests', () => {
 
     describe('POST /api/subcategories', () => {
         it('should create a new subcategory', async () => {
+            const householdId = uuidv4();
             const newSubcategory = {
                 name: 'New Subcategory',
                 categoryId: uuidv4()
@@ -545,34 +598,35 @@ describe('API Integration Tests', () => {
             const mockCreatedSubcategory = {
                 id: uuidv4(),
                 ...newSubcategory,
-                householdId: uuidv4()
+                householdId: householdId
             };
 
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult([mockCreatedSubcategory]));
+            mockSubcategoryService.createSubcategory = jest.fn().mockResolvedValue(mockCreatedSubcategory);
 
             const response = await request(app)
                 .post('/api/subcategories')
                 .send(newSubcategory)
                 .set('Authorization', 'Bearer mockToken')
-                .set('X-Household-Id', mockCreatedSubcategory.householdId);
+                .set('X-Household-Id', householdId);
 
             expect(response.status).toBe(201);
             expect(response.body).toMatchObject(mockCreatedSubcategory);
         });
 
         it('should return 404 when parent category does not exist', async () => {
+            const householdId = uuidv4();
             const newSubcategory = {
                 name: 'New Subcategory',
                 categoryId: uuidv4()
             };
 
-            mockPool.query.mockRejectedValueOnce(new Error('Parent category not found'));
+            mockSubcategoryService.createSubcategory = jest.fn().mockRejectedValue(new AppError('Parent category not found', 404));
 
             const response = await request(app)
                 .post('/api/subcategories')
                 .send(newSubcategory)
                 .set('Authorization', 'Bearer mockToken')
-                .set('X-Household-Id', uuidv4());
+                .set('X-Household-Id', householdId);
 
             expect(response.status).toBe(404);
             expect(response.body).toHaveProperty('message', 'Parent category not found');
@@ -591,10 +645,10 @@ describe('API Integration Tests', () => {
             const mockUpdatedSubcategory = {
                 id: subcategoryId,
                 ...updateData,
-                household_id: householdId
+                householdId: householdId
             };
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockUpdatedSubcategory] });
+            mockSubcategoryService.updateSubcategory = jest.fn().mockResolvedValue(mockUpdatedSubcategory);
 
             const response = await request(app)
                 .put(`/api/subcategories/${subcategoryId}`)
@@ -612,7 +666,7 @@ describe('API Integration Tests', () => {
             const subcategoryId = uuidv4();
             const householdId = uuidv4();
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+            mockSubcategoryService.deleteSubcategory = jest.fn().mockResolvedValue(1);
 
             const response = await request(app)
                 .delete(`/api/subcategories/${subcategoryId}`)
@@ -626,14 +680,19 @@ describe('API Integration Tests', () => {
     describe('GET /api/expenses', () => {
         it('should return all expenses for a household with pagination', async () => {
             const mockExpenses = [
-                { id: uuidv4(), description: 'Expense 1', amount: 100, category: 'Food', subcategory: 'Groceries', expenseDatetime: new Date().toISOString() },
-                { id: uuidv4(), description: 'Expense 2', amount: 200, category: 'Transport', subcategory: 'Gas', expenseDatetime: new Date().toISOString() },
+                new Expense('Expense 1', 100, 'Food', 'Groceries', uuidv4(), new Date()),
+                new Expense('Expense 2', 200, 'Transport', 'Gas', uuidv4(), new Date())
             ];
 
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult(mockExpenses));
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult([{ count: '10' }]));
+            mockExpenseService.getExpenses.mockResolvedValue({
+                expenses: mockExpenses,
+                totalItems: 10
+            });
 
-            const response = await request(app).get('/api/expenses?page=1&limit=10');
+            const response = await request(app)
+                .get('/api/expenses?page=1&limit=10')
+                .set('Authorization', 'Bearer mockToken')
+                .set('X-Household-Id', uuidv4());
 
             expect(response.status).toBe(200);
             expect(response.body).toHaveProperty('expenses');
@@ -649,41 +708,20 @@ describe('API Integration Tests', () => {
                 endDate: '2023-12-31T23:59:59Z',
                 category: 'Food',
                 subcategory: 'Groceries',
-                page: 1,
-                limit: 10
+                page: '1',
+                limit: '10'
             };
 
             const mockExpenses = [
-                {
-                    id: uuidv4(),
-                    description: 'Grocery shopping',
-                    amount: 50.00,
-                    category: 'Food',
-                    subcategory: 'Groceries',
-                    expenseDatetime: '2023-06-15T14:30:00Z'
-                },
-                {
-                    id: uuidv4(),
-                    description: 'Gas station',
-                    amount: 30.50,
-                    category: 'Transport',
-                    subcategory: 'Fuel',
-                    expenseDatetime: '2023-06-16T10:15:00Z'
-                },
-                {
-                    id: uuidv4(),
-                    description: 'Movie tickets',
-                    amount: 25.00,
-                    category: 'Entertainment',
-                    subcategory: 'Cinema',
-                    expenseDatetime: '2023-06-17T20:00:00Z'
-                }
+                new Expense('Grocery shopping', 50.00, 'Food', 'Groceries', uuidv4(), new Date('2023-06-15T14:30:00Z')),
+                new Expense('Gas station', 30.50, 'Transport', 'Fuel', uuidv4(), new Date('2023-06-16T10:15:00Z')),
+                new Expense('Movie tickets', 25.00, 'Entertainment', 'Cinema', uuidv4(), new Date('2023-06-17T20:00:00Z'))
             ];
 
-            const mockTotalCount = { count: '15' };
-
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult(mockExpenses));
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult([mockTotalCount]));
+            mockExpenseService.getExpenses.mockResolvedValue({
+                expenses: mockExpenses,
+                totalItems: 15
+            });
 
             const response = await request(app)
                 .get('/api/expenses')
@@ -710,35 +748,48 @@ describe('API Integration Tests', () => {
                 expenseDatetime: new Date().toISOString(),
             };
 
-            const mockCreatedExpense = {
-                ...newExpense,
-                id: uuidv4(),
-                householdId: uuidv4(),
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
+            const mockCreatedExpense = new Expense(
+                newExpense.description,
+                newExpense.amount,
+                newExpense.category,
+                newExpense.subcategory,
+                uuidv4(),
+                new Date(newExpense.expenseDatetime)
+            );
 
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult([mockCreatedExpense]));
+            mockExpenseService.createExpense.mockResolvedValue(mockCreatedExpense);
 
             const response = await request(app)
                 .post('/api/expenses')
-                .send(newExpense);
+                .send(newExpense)
+                .set('Authorization', 'Bearer mockToken')
+                .set('X-Household-Id', uuidv4());
 
             expect(response.status).toBe(201);
-            expect(response.body).toMatchObject(mockCreatedExpense);
+            expect(response.body).toMatchObject({
+                description: newExpense.description,
+                amount: newExpense.amount,
+                category: newExpense.category,
+                subcategory: newExpense.subcategory
+            });
         });
     });
 
     describe('POST /api/expenses/upload', () => {
+        beforeEach(() => {
+            jest.clearAllMocks();
+        });
+
         it('should process an uploaded image and create an expense', async () => {
             const householdId = uuidv4();
             const userId = uuidv4();
             const mockFile = Buffer.from('mock image content');
             const mockExpense = new Expense('Test expense', 100, 'Food', 'Groceries', householdId, new Date());
 
-            // Mock for successful image processing
             jest.spyOn(require('../../../services/external/openaiService'), 'processReceipt')
                 .mockResolvedValue(mockExpense);
+
+            mockExpenseService.createExpense.mockResolvedValue(mockExpense);
 
             const response = await request(app)
                 .post('/api/expenses/upload')
@@ -758,11 +809,26 @@ describe('API Integration Tests', () => {
 
         it('should process an uploaded audio file and create an expense', async () => {
             const householdId = uuidv4();
-            const userId = uuidv4();
             const mockFile = Buffer.from('mock audio content');
             const mockExpense = new Expense('Audio expense', 50, 'Transportation', 'Fuel', householdId, new Date());
 
-            // Mocks para el procesamiento de audio
+            const mockReqFile = {
+                fieldname: 'file',
+                originalname: 'expense.mp3',
+                encoding: '7bit',
+                mimetype: 'audio/mpeg',
+                destination: 'uploads/',
+                filename: '7c45514f06b85b7411ee5492dbef2b06',
+                path: 'uploads/7c45514f06b85b7411ee5492dbef2b06',
+                size: 18
+            };
+
+            jest.doMock('fs', () => ({
+                renameSync: jest.fn(),
+                existsSync: jest.fn().mockReturnValue(true),
+                unlinkSync: jest.fn(),
+            }));
+
             jest.spyOn(require('../../../services/external/openaiService'), 'transcribeAudio')
                 .mockResolvedValue('Transcribed audio content');
             jest.spyOn(require('../../../services/external/openaiService'), 'analyzeTranscription')
@@ -789,7 +855,11 @@ describe('API Integration Tests', () => {
             const userId = uuidv4();
             const mockFile = Buffer.from('mock content');
 
-            // Mock para simular que no se pudo identificar un gasto válido
+            // Mock ffprobe locally
+            jest.doMock('fluent-ffmpeg', () => ({
+                ffprobe: jest.fn().mockResolvedValue({}),
+            }));
+
             jest.spyOn(require('../../../services/external/openaiService'), 'processReceipt')
                 .mockResolvedValue(null);
 
@@ -802,7 +872,42 @@ describe('API Integration Tests', () => {
             expect(response.status).toBe(422);
             expect(response.body).toHaveProperty('message', 'No expense logged.');
             expect(response.body).toHaveProperty('details', 'The file was processed successfully, but no valid expense could be identified.');
+
+            // Clear the local mock
+            jest.dontMock('fluent-ffmpeg');
         });
+
+        it('should return 400 when no file is uploaded', async () => {
+            const householdId = uuidv4();
+
+            const response = await request(app)
+                .post('/api/expenses/upload')
+                .set('Authorization', 'Bearer mockToken')
+                .set('X-Household-Id', householdId);
+
+            expect(response.status).toBe(400);
+            expect(response.text).toBe('No file uploaded.');
+        });
+
+        // it('should return 400 for an invalid audio file', async () => {
+        //     const householdId = uuidv4();
+        //     const mockFile = Buffer.from('invalid audio content');
+        //
+        //     // Sobrescribimos el mock de 'ffprobe' específicamente para este test
+        //     const mockFfmpeg = require('fluent-ffmpeg');
+        //     mockFfmpeg.ffprobe.mockImplementationOnce((path: string, callback: (err: Error | null, data: any) => void) => {
+        //         callback(new Error('Invalid audio file'), null);
+        //     });
+        //
+        //     const response = await request(app)
+        //         .post('/api/expenses/upload')
+        //         .attach('file', mockFile, 'invalid.mp3')
+        //         .set('Authorization', 'Bearer mockToken')
+        //         .set('X-Household-Id', householdId);
+        //
+        //     expect(response.status).toBe(400);
+        //     expect(response.text).toBe('Invalid audio file.');
+        // });
     });
 
     describe('PUT /api/expenses/:id', () => {
@@ -816,22 +921,30 @@ describe('API Integration Tests', () => {
                 expenseDatetime: new Date().toISOString(),
             };
 
-            const mockUpdatedExpense = {
-                id: expenseId,
-                ...updatedExpenseData,
-                householdId: uuidv4(),
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
+            const mockUpdatedExpense = new Expense(
+                updatedExpenseData.description,
+                updatedExpenseData.amount,
+                updatedExpenseData.category,
+                updatedExpenseData.subcategory,
+                uuidv4(),
+                new Date(updatedExpenseData.expenseDatetime)
+            );
 
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult([mockUpdatedExpense]));
+            mockExpenseService.updateExpense.mockResolvedValue(mockUpdatedExpense);
 
             const response = await request(app)
                 .put(`/api/expenses/${expenseId}`)
-                .send(updatedExpenseData);
+                .send(updatedExpenseData)
+                .set('Authorization', 'Bearer mockToken')
+                .set('X-Household-Id', uuidv4());
 
             expect(response.status).toBe(200);
-            expect(response.body).toMatchObject(mockUpdatedExpense);
+            expect(response.body).toMatchObject({
+                description: updatedExpenseData.description,
+                amount: updatedExpenseData.amount,
+                category: updatedExpenseData.category,
+                subcategory: updatedExpenseData.subcategory
+            });
         });
     });
 
@@ -839,9 +952,12 @@ describe('API Integration Tests', () => {
         it('should delete an expense', async () => {
             const expenseId = uuidv4();
 
-            mockPool.query.mockResolvedValueOnce(createMockQueryResult([], 1));
+            mockExpenseService.deleteExpense.mockResolvedValue(undefined);
 
-            const response = await request(app).delete(`/api/expenses/${expenseId}`);
+            const response = await request(app)
+                .delete(`/api/expenses/${expenseId}`)
+                .set('Authorization', 'Bearer mockToken')
+                .set('X-Household-Id', uuidv4());
 
             expect(response.status).toBe(204);
         });
