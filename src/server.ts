@@ -1,6 +1,9 @@
 import config from './config/config';
-import app from './app';
 import logger from "./config/logger";
+import {createApp} from './app';
+import {container} from './config/dependencyContainer';
+
+const app = createApp(container);
 
 const server = app.listen(config.port, () => {
     logger.info(`Server running in ${config.nodeEnv} mode on port ${config.port}`);
