@@ -49,12 +49,15 @@ export const attachUser = async (req: Request, res: Response, next: NextFunction
     }
 
     try {
-        const user = await userService.getUserByAuthProviderId(req.auth.sub);
-        if (!user) {
+        const userData = await userService.getUserByAuthProviderId(req.auth.sub);
+        if (!userData) {
             return res.status(403).json({ message: 'User not registered in the system' });
         }
 
-        req.user = user;
+        req.user = new User(userData.email, userData.name, userData.authProviderId);
+        req.user.id = userData.id;
+        // Add any other properties you need from userData
+
         next();
     } catch (error) {
         logger.error('Error in attachUser middleware', { error });

@@ -6,7 +6,7 @@ import logger from '../config/logger';
 declare global {
     namespace Express {
         interface Request {
-            currentHouseholdId: string; // Cambiado de opcional a requerido
+            currentHouseholdId: string; 
         }
     }
 }
