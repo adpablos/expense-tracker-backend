@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Category } from "../../../models/Category";
+import { Category } from "../../../src/models/Category";
 
 describe('Category Model', () => {
     it('should create a valid Category instance', () => {

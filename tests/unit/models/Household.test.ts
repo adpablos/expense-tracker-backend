@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Household } from "../../../models/Household";
+import { Household } from "../../../src/models/Household";
 
 describe('Household Model', () => {
     it('should create a valid Household instance', () => {

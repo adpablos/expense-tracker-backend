@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Expense } from "../../../models/Expense";
+import { Expense } from "../../../src/models/Expense";
 
 describe('Expense Model', () => {
     const mockDate = new Date('2024-01-01T00:00:00Z');

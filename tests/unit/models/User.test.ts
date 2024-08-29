@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { User } from "../../../models/User";
+import { User } from "../../../src/models/User";
 
 describe('User Model', () => {
     it('should create a valid User instance', () => {

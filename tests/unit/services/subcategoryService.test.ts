@@ -1,9 +1,9 @@
-import { SubcategoryService } from '../../../services/subcategoryService';
-import { Subcategory } from '../../../models/Subcategory';
+import { SubcategoryService } from '../../../src/services/subcategoryService';
+import { Subcategory } from '../../../src/models/Subcategory';
 import { Pool, QueryResult } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import { AppError } from '../../../utils/AppError';
-import { NotificationService } from '../../../services/external/notificationService';
+import { AppError } from '../../../src/utils/AppError';
+import { NotificationService } from '../../../src/services/external/notificationService';
 
 jest.mock('pg');
 jest.mock('../../../config/logger');

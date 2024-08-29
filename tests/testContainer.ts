@@ -1,17 +1,17 @@
 import 'reflect-metadata';
 import {Container} from 'inversify';
-import {TYPES} from '../types';
-import {UserService} from '../services/userService';
-import {HouseholdService} from '../services/householdService';
-import {ExpenseService} from '../services/expenseService';
-import {CategoryService} from '../services/categoryService';
-import {SubcategoryService} from '../services/subcategoryService';
-import {NotificationService} from '../services/external/notificationService';
-import {UserController} from '../controllers/userController';
-import {HouseholdController} from '../controllers/householdController';
-import {ExpenseController} from '../controllers/expenseController';
-import {CategoryController} from '../controllers/categoryController';
-import {SubcategoryController} from '../controllers/subcategoryController';
+import {TYPES} from '../src/types';
+import {UserService} from '../src/services/userService';
+import {HouseholdService} from '../src/services/householdService';
+import {ExpenseService} from '../src/services/expenseService';
+import {CategoryService} from '../src/services/categoryService';
+import {SubcategoryService} from '../src/services/subcategoryService';
+import {NotificationService} from '../src/services/external/notificationService';
+import {UserController} from '../src/controllers/userController';
+import {HouseholdController} from '../src/controllers/householdController';
+import {ExpenseController} from '../src/controllers/expenseController';
+import {CategoryController} from '../src/controllers/categoryController';
+import {SubcategoryController} from '../src/controllers/subcategoryController';
 
 export function createTestContainer() {
     const container = new Container();

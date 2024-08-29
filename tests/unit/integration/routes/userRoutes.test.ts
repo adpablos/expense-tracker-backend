@@ -1,14 +1,14 @@
 import 'reflect-metadata';
 import request from 'supertest';
 
-import {createApp} from "../../../../app";
+import {createApp} from "../../../../src/app";
 import {mockHouseholdId, mockUserId} from '../../testUtils';
 import {v4 as uuidv4} from 'uuid';
-import {TYPES} from '../../../../types';
+import {TYPES} from '../../../../src/types';
 import {createTestContainer} from "../../../testContainer";
 import {mockHouseholdService, mockUserService} from "../../mocks/serviceMocks";
-import {Household} from "../../../../models/Household";
-import { AppError } from '../../../../utils/AppError';
+import {Household} from "../../../../src/models/Household";
+import { AppError } from '../../../../src/utils/AppError';
 
 jest.mock('pg', () => require('../../mocks/pg'));
 

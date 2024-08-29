@@ -1,9 +1,9 @@
-import { ExpenseService } from '../../../services/expenseService';
-import { Expense } from '../../../models/Expense';
+import { ExpenseService } from '../../../src/services/expenseService';
+import { Expense } from '../../../src/models/Expense';
 import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import { AppError } from '../../../utils/AppError';
-import { NotificationService } from '../../../services/external/notificationService';
+import { AppError } from '../../../src/utils/AppError';
+import { NotificationService } from '../../../src/services/external/notificationService';
 
 jest.mock('pg');
 jest.mock('../../../config/logger');

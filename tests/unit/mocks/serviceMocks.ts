@@ -1,9 +1,9 @@
-import {HouseholdService} from "../../../services/householdService";
-import {UserService} from "../../../services/userService";
-import {CategoryService} from "../../../services/categoryService";
-import {SubcategoryService} from "../../../services/subcategoryService";
-import {ExpenseService} from "../../../services/expenseService";
-import {NotificationService} from "../../../services/external/notificationService";
+import {HouseholdService} from "../../../src/services/householdService";
+import {UserService} from "../../../src/services/userService";
+import {CategoryService} from "../../../src/services/categoryService";
+import {SubcategoryService} from "../../../src/services/subcategoryService";
+import {ExpenseService} from "../../../src/services/expenseService";
+import {NotificationService} from "../../../src/services/external/notificationService";
 
 type MockedClassMethods<T> = {
     [K in keyof T]: T[K] extends Function ? jest.Mock : T[K];

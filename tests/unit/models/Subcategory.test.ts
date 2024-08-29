@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Subcategory } from "../../../models/Subcategory";
+import { Subcategory } from "../../../src/models/Subcategory";
 
 describe('Subcategory Model', () => {
     it('should create a valid Subcategory instance', () => {

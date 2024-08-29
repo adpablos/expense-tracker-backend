@@ -1,10 +1,10 @@
-import { UserService } from '../../../services/userService';
-import { User } from '../../../models/User';
+import { UserService } from '../../../src/services/userService';
+import { User } from '../../../src/models/User';
 import { Pool, PoolClient } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import { AppError } from '../../../utils/AppError';
-import { HouseholdService } from '../../../services/householdService';
-import {Household} from "../../../models/Household";
+import { AppError } from '../../../src/utils/AppError';
+import { HouseholdService } from '../../../src/services/householdService';
+import {Household} from "../../../src/models/Household";
 
 jest.mock('pg');
 jest.mock('../../../config/logger');

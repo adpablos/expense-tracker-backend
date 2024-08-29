@@ -1,8 +1,8 @@
 import { Pool, QueryResult } from 'pg';
-import { HouseholdService } from '../../../services/householdService';
-import { Household } from '../../../models/Household';
-import { User } from '../../../models/User';
-import { HouseholdMember } from '../../../models/HouseholdMember';
+import { HouseholdService } from '../../../src/services/householdService';
+import { Household } from '../../../src/models/Household';
+import { User } from '../../../src/models/User';
+import { HouseholdMember } from '../../../src/models/HouseholdMember';
 
 jest.mock('pg');
 jest.mock('../../../config/logger');
