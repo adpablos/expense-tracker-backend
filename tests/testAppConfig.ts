@@ -1,5 +1,5 @@
 import {Container} from 'inversify';
-import {TYPES} from '../src/types';
+import {DI_TYPES} from '../src/types/di';
 import {HouseholdService} from '../src/services/householdService';
 import {UserService} from '../src/services/userService';
 import {NotificationService} from '../src/services/external/notificationService';
@@ -50,10 +50,10 @@ class MockSubcategoryService extends SubcategoryService {
 
 const testContainer = new Container();
 
-testContainer.bind<HouseholdService>(TYPES.HouseholdService).toConstantValue(new MockHouseholdService());
-testContainer.bind<UserService>(TYPES.UserService).toConstantValue(new MockUserService());
-testContainer.bind<NotificationService>(TYPES.NotificationService).toConstantValue(new MockNotificationService());
-testContainer.bind<CategoryService>(TYPES.CategoryService).toConstantValue(new MockCategoryService());
-testContainer.bind<SubcategoryService>(TYPES.SubcategoryService).toConstantValue(new MockSubcategoryService());
+testContainer.bind<HouseholdService>(DI_TYPES.HouseholdService).toConstantValue(new MockHouseholdService());
+testContainer.bind<UserService>(DI_TYPES.UserService).toConstantValue(new MockUserService());
+testContainer.bind<NotificationService>(DI_TYPES.NotificationService).toConstantValue(new MockNotificationService());
+testContainer.bind<CategoryService>(DI_TYPES.CategoryService).toConstantValue(new MockCategoryService());
+testContainer.bind<SubcategoryService>(DI_TYPES.SubcategoryService).toConstantValue(new MockSubcategoryService());
 
 export {testContainer};

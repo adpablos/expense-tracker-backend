@@ -4,7 +4,7 @@ import request from 'supertest';
 import {createApp} from "../../../../src/app";
 import {mockHouseholdId, mockUserId} from '../../testUtils';
 import {v4 as uuidv4} from 'uuid';
-import {TYPES} from '../../../../src/types';
+import {DI_TYPES} from '../../../../src/types/di';
 import {createTestContainer} from "../../../testContainer";
 import {mockHouseholdService, mockUserService} from "../../mocks/serviceMocks";
 import {Household} from "../../../../src/models/Household";
@@ -28,8 +28,8 @@ jest.mock('../../../../middleware/authMiddleware', () => ({
 }));
 
 const testContainer = createTestContainer();
-testContainer.rebind(TYPES.UserService).toConstantValue(mockUserService);
-testContainer.rebind(TYPES.HouseholdService).toConstantValue(mockHouseholdService);
+testContainer.rebind(DI_TYPES.UserService).toConstantValue(mockUserService);
+testContainer.rebind(DI_TYPES.HouseholdService).toConstantValue(mockHouseholdService);
 const app = createApp(testContainer);
 
 describe('User Routes', () => {

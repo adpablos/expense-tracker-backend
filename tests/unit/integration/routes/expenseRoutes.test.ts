@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 import { createApp } from "../../../../src/app";
-import { TYPES } from '../../../../src/types';
+import { DI_TYPES } from '../../../../src/types/di';
 import { createTestContainer } from "../../../testContainer";
 import { mockExpenseService, mockHouseholdService } from "../../mocks/serviceMocks";
 import { mockUserId, mockHouseholdId } from '../../testUtils';
@@ -26,8 +26,8 @@ jest.mock('../../../../middleware/authMiddleware', () => ({
 }));
 
 const testContainer = createTestContainer();
-testContainer.rebind(TYPES.ExpenseService).toConstantValue(mockExpenseService);
-testContainer.rebind(TYPES.HouseholdService).toConstantValue(mockHouseholdService);
+testContainer.rebind(DI_TYPES.ExpenseService).toConstantValue(mockExpenseService);
+testContainer.rebind(DI_TYPES.HouseholdService).toConstantValue(mockHouseholdService);
 const app = createApp(testContainer);
 
 describe('Expense Routes', () => {

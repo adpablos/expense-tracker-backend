@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import {Container} from 'inversify';
-import {TYPES} from '../src/types';
+import {DI_TYPES} from '../src/types/di';
 import {UserService} from '../src/services/userService';
 import {HouseholdService} from '../src/services/householdService';
 import {ExpenseService} from '../src/services/expenseService';
@@ -71,19 +71,19 @@ export function createTestContainer() {
     };
 
     // Bind mock services
-    container.bind<UserService>(TYPES.UserService).toConstantValue(mockUserService as unknown as UserService);
-    container.bind<HouseholdService>(TYPES.HouseholdService).toConstantValue(mockHouseholdService as unknown as HouseholdService);
-    container.bind<ExpenseService>(TYPES.ExpenseService).toConstantValue(mockExpenseService as unknown as ExpenseService);
-    container.bind<CategoryService>(TYPES.CategoryService).toConstantValue(mockCategoryService as unknown as CategoryService);
-    container.bind<SubcategoryService>(TYPES.SubcategoryService).toConstantValue(mockSubcategoryService as unknown as SubcategoryService);
-    container.bind<NotificationService>(TYPES.NotificationService).toConstantValue(mockNotificationService as unknown as NotificationService);
+    container.bind<UserService>(DI_TYPES.UserService).toConstantValue(mockUserService as unknown as UserService);
+    container.bind<HouseholdService>(DI_TYPES.HouseholdService).toConstantValue(mockHouseholdService as unknown as HouseholdService);
+    container.bind<ExpenseService>(DI_TYPES.ExpenseService).toConstantValue(mockExpenseService as unknown as ExpenseService);
+    container.bind<CategoryService>(DI_TYPES.CategoryService).toConstantValue(mockCategoryService as unknown as CategoryService);
+    container.bind<SubcategoryService>(DI_TYPES.SubcategoryService).toConstantValue(mockSubcategoryService as unknown as SubcategoryService);
+    container.bind<NotificationService>(DI_TYPES.NotificationService).toConstantValue(mockNotificationService as unknown as NotificationService);
 
     // Bind controllers
-    container.bind<UserController>(TYPES.UserController).to(UserController);
-    container.bind<HouseholdController>(TYPES.HouseholdController).to(HouseholdController);
-    container.bind<ExpenseController>(TYPES.ExpenseController).to(ExpenseController);
-    container.bind<CategoryController>(TYPES.CategoryController).to(CategoryController);
-    container.bind<SubcategoryController>(TYPES.SubcategoryController).to(SubcategoryController);
+    container.bind<UserController>(DI_TYPES.UserController).to(UserController);
+    container.bind<HouseholdController>(DI_TYPES.HouseholdController).to(HouseholdController);
+    container.bind<ExpenseController>(DI_TYPES.ExpenseController).to(ExpenseController);
+    container.bind<CategoryController>(DI_TYPES.CategoryController).to(CategoryController);
+    container.bind<SubcategoryController>(DI_TYPES.SubcategoryController).to(SubcategoryController);
 
     return container;
 }
