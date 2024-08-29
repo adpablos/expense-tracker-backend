@@ -1,6 +1,20 @@
+import axios, { AxiosError } from 'axios';
 import express from 'express';
-import axios from 'axios';
-import logger from "../config/logger";
+
+import logger from '../config/logger';
+
+interface Auth0Error {
+  response?: {
+    data: {
+      error?: string;
+      error_description?: string;
+      [key: string]: unknown;
+    };
+    status: number;
+  };
+  request?: unknown;
+  message: string;
+}
 
 const router = express.Router();
 
@@ -36,42 +50,43 @@ export default router;
  *         description: Server error
  */
 router.post('/get-token', async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        const response = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
-            grant_type: 'password',
-            username: email,
-            password: password,
-            audience: process.env.AUTH0_AUDIENCE,
-            client_id: process.env.AUTH0_CLIENT_ID,
-            client_secret: process.env.AUTH0_CLIENT_SECRET,
-            scope: 'openid'
+    const response = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
+      grant_type: 'password',
+      username: email,
+      password: password,
+      audience: process.env.AUTH0_AUDIENCE,
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      scope: 'openid',
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    const axiosError = error as AxiosError<Auth0Error>;
+    logger.error('Error obtaining token', {
+      error: axiosError.response ? axiosError.response.data : axiosError.message,
+      status: axiosError.response ? axiosError.response.status : null,
+    });
+
+    if (axiosError.response) {
+      // Auth0 specific error responses
+      if (axiosError.response.status === 401 || axiosError.response.status === 403) {
+        res.status(401).json({ message: 'Invalid credentials' });
+      } else {
+        res.status(axiosError.response.status).json({
+          error: 'Failed to obtain token',
+          details: axiosError.response.data,
         });
-
-        res.json(response.data);
-    } catch (error: any) {
-        logger.error('Error obtaining token', {
-            error: error.response ? error.response.data : error.message,
-            status: error.response ? error.response.status : null
-        });
-
-        if (error.response) {
-            // Auth0 specific error responses
-            if (error.response.status === 401 || error.response.status === 403) {
-                res.status(401).json({ message: 'Invalid credentials' });
-            } else {
-                res.status(error.response.status).json({
-                    error: 'Failed to obtain token',
-                    details: error.response.data
-                });
-            }
-        } else if (error.request) {
-            // The request was made but no response was received
-            res.status(500).json({ error: 'No response received from authentication server' });
-        } else {
-            // Something happened in setting up the request that triggered an Error
-            res.status(500).json({ error: 'Internal server error' });
-        }
+      }
+    } else if (axiosError.request) {
+      // The request was made but no response was received
+      res.status(500).json({ error: 'No response received from authentication server' });
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      res.status(500).json({ error: 'Internal server error' });
     }
+  }
 });
