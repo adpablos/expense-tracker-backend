@@ -104,13 +104,12 @@ describe('CategoryService', () => {
 
         (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
 
-        const result = await categoryService.deleteCategory(categoryId, householdId);
+        await categoryService.deleteCategory(categoryId, householdId);
 
         expect(mockPool.query).toHaveBeenCalledWith(
             'DELETE FROM categories WHERE id = $1 AND household_id = $2',
             [categoryId, householdId]
         );
-        expect(result).toBe(1);
         expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
             householdId,
             expect.stringContaining('Categoría eliminada:')
@@ -136,13 +135,12 @@ describe('CategoryService', () => {
 
         (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 2 });
 
-        const result = await categoryService.deleteSubcategoriesByCategoryId(categoryId, householdId);
+        await categoryService.deleteSubcategoriesByCategoryId(categoryId, householdId);
 
         expect(mockPool.query).toHaveBeenCalledWith(
             'DELETE FROM subcategories WHERE category_id = $1 AND household_id = $2',
             [categoryId, householdId]
         );
-        expect(result).toBe(2);
     });
 
     it('should handle database errors', async () => {

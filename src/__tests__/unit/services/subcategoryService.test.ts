@@ -1,6 +1,6 @@
 import { SubcategoryService } from '../../../services/subcategoryService';
 import { Subcategory } from '../../../models/Subcategory';
-import { Pool } from 'pg';
+import { Pool, QueryResult } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import { AppError } from '../../../utils/AppError';
 import { NotificationService } from '../../../services/external/notificationService';
@@ -79,7 +79,7 @@ describe('SubcategoryService', () => {
             expect(result.name).toBe(newSubcategory.name);
             expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
                 newSubcategory.householdId,
-                expect.stringContaining('Nueva categoría creada:')
+                expect.stringContaining('Nueva subcategoría creada:')
             );
         });
 
@@ -116,17 +116,26 @@ describe('SubcategoryService', () => {
             );
         });
 
-        it('should return null when updating non-existent subcategory', async () => {
+        it('should throw AppError when updating non-existent subcategory', async () => {
             const subcategoryId = uuidv4();
             const categoryId = uuidv4();
             const householdId = uuidv4();
             const updatedName = 'Updated Subcategory';
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+            const mockQueryResult: QueryResult = {
+                rows: [],
+                command: '',
+                rowCount: 0,
+                oid: 0,
+                fields: []
+            };
 
-            const result = await subcategoryService.updateSubcategory(subcategoryId, updatedName, categoryId, householdId);
+            (mockPool.query as jest.Mock).mockResolvedValueOnce(mockQueryResult);
 
-            expect(result).toBeNull();
+            const updatePromise = subcategoryService.updateSubcategory(subcategoryId, updatedName, categoryId, householdId);
+
+            await expect(updatePromise).rejects.toThrow(AppError);
+            await expect(updatePromise).rejects.toThrow('Subcategory not found');
         });
     });
 
@@ -135,30 +144,49 @@ describe('SubcategoryService', () => {
             const subcategoryId = uuidv4();
             const householdId = uuidv4();
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+            const mockQueryResult: QueryResult = {
+                rows: [],
+                command: 'DELETE',
+                rowCount: 1,
+                oid: 0,
+                fields: []
+            };
 
-            const result = await subcategoryService.deleteSubcategory(subcategoryId, householdId);
+            (mockPool.query as jest.Mock).mockResolvedValueOnce(mockQueryResult);
+
+            await expect(subcategoryService.deleteSubcategory(subcategoryId, householdId))
+                .resolves.not.toThrow();
 
             expect(mockPool.query).toHaveBeenCalledWith(
                 'DELETE FROM subcategories WHERE id = $1 AND household_id = $2',
                 [subcategoryId, householdId]
             );
-            expect(result).toBe(1);
             expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
                 householdId,
                 expect.stringContaining('Subcategoría eliminada:')
             );
         });
 
-        it('should return null when deleting non-existent subcategory', async () => {
+        it('should throw AppError when deleting non-existent subcategory', async () => {
             const subcategoryId = uuidv4();
             const householdId = uuidv4();
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 0 });
+            const mockQueryResult: QueryResult = {
+                rows: [],
+                command: 'DELETE',
+                rowCount: 0,
+                oid: 0,
+                fields: []
+            };
 
-            const result = await subcategoryService.deleteSubcategory(subcategoryId, householdId);
+            (mockPool.query as jest.Mock).mockResolvedValueOnce(mockQueryResult);
 
-            expect(result).toBeNull();
+            const result = subcategoryService.deleteSubcategory(subcategoryId, householdId);
+
+            await expect(result)
+                .rejects.toThrow(AppError);
+            await expect(result)
+                .rejects.toThrow('Subcategory not found');
         });
     });
 

@@ -84,7 +84,7 @@ describe('ExpenseService', () => {
             const result = await expenseService.createExpense(newExpense, uuidv4());
 
             expect(mockPool.query).toHaveBeenCalledWith(
-                expect.stringMatching(/INSERT INTO expenses .+ VALUES .+ RETURNING \*/),
+                expect.stringMatching(/INSERT INTO expenses[\s\S]+VALUES[\s\S]+RETURNING \*/),
                 expect.arrayContaining([
                     newExpense.id,
                     newExpense.description,

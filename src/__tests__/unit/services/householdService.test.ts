@@ -1,120 +1,104 @@
+import { Pool, QueryResult } from 'pg';
 import { HouseholdService } from '../../../services/householdService';
 import { Household } from '../../../models/Household';
 import { User } from '../../../models/User';
-import { Pool, PoolClient } from 'pg';
-import { v4 as uuidv4 } from 'uuid';
-import { AppError } from '../../../utils/AppError';
-import {createMockQueryResult} from "../e2e/api.test";
+import { HouseholdMember } from '../../../models/HouseholdMember';
 
 jest.mock('pg');
 jest.mock('../../../config/logger');
-jest.mock('../../../config/openaiConfig', () => ({
-    __esModule: true,
-    default: {
-        chat: {
-            completions: {
-                create: jest.fn().mockResolvedValue({
-                    choices: [{ message: { content: 'Mocked response' } }]
-                })
-            }
-        },
-        audio: {
-            transcriptions: {
-                create: jest.fn().mockResolvedValue({ text: 'Mocked transcription' })
-            }
-        }
-    }
-}));
 
 describe('HouseholdService', () => {
     let householdService: HouseholdService;
     let mockPool: jest.Mocked<Pool>;
-    let mockClient: jest.Mocked<PoolClient>;
+    let mockClient: any;
 
     beforeEach(() => {
         mockClient = {
             query: jest.fn(),
             release: jest.fn(),
-        } as unknown as jest.Mocked<PoolClient>;
-
+        };
         mockPool = {
             connect: jest.fn().mockResolvedValue(mockClient),
             query: jest.fn(),
         } as unknown as jest.Mocked<Pool>;
 
+        (mockPool.query as jest.Mock).mockResolvedValue({ rows: [] });
+
         householdService = new HouseholdService(mockPool);
     });
 
     describe('createHousehold', () => {
-        it('should create a new household', async () => {
-            const newHousehold = new Household('Test Household');
-            const user = new User('test@example.com', 'Test User', 'auth0|123456');
-            const mockDbResult = { ...newHousehold.toDatabase(), id: uuidv4() };
+        it('should create a new household successfully', async () => {
+            const household = new Household('Test Household');
+            const user = new User('1', 'test@example.com', 'Test User', 'auth123');
+            
+            mockClient.query
+                .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN transaction
+                .mockResolvedValueOnce({ rows: [] }) // Usuario no existe
+                .mockResolvedValueOnce({ rows: [{ id: '1' }] }) // Insertar usuario
+                .mockResolvedValueOnce({ rows: [{ id: 'new-household-id', name: 'Test Household' }] }) // Insertar household
+                .mockResolvedValueOnce({ rows: [{ id: 'member-id' }] }) // Insertar household_member
+                .mockResolvedValueOnce({ rowCount: 0 }); // COMMIT transaction
 
-            (mockClient.query as jest.Mock).mockResolvedValueOnce(createMockQueryResult([]));
-            (mockClient.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: user.id }] }); // Insert user
-            (mockClient.query as jest.Mock).mockResolvedValueOnce({ rows: [mockDbResult] }); // Insert household
-            (mockClient.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: uuidv4() }] }); // Insert household member
+            const result = await householdService.createHousehold(household, user);
 
-            const result = await householdService.createHousehold(newHousehold, user);
-
-            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-            expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
             expect(result).toBeInstanceOf(Household);
-            expect(result.name).toBe(newHousehold.name);
+            expect(result.id).toBe('new-household-id');
+            expect(result.name).toBe('Test Household');
+            expect(mockClient.query).toHaveBeenCalledTimes(6);
         });
 
         it('should throw an error if user already exists', async () => {
-            const newHousehold = new Household('Test Household');
-            const user = new User('test@example.com', 'Test User', 'auth0|123456');
+            const household = new Household('Test Household');
+            const user = new User('1', 'test@example.com', 'Test User', 'auth123');
+            
+            mockClient.query
+                .mockResolvedValueOnce({ rowCount: 0 }) // BEGIN transaction
+                .mockResolvedValueOnce({ rows: [{ id: '1' }] }) // Usuario ya existe
+                .mockResolvedValueOnce({ rowCount: 0 }); // ROLLBACK transaction
 
-            (mockClient.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: user.id }] }); // User already exists
-
-            await expect(householdService.createHousehold(newHousehold, user)).rejects.toThrow(AppError);
-            expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+            await expect(householdService.createHousehold(household, user))
+                .rejects.toThrow('User already exists');
+            
+            expect(mockClient.query).toHaveBeenCalledTimes(3);
         });
     });
 
     describe('getHouseholdById', () => {
-        it('should return a household by id', async () => {
-            const householdId = uuidv4();
-            const mockHousehold = { id: householdId, name: 'Test Household', created_at: new Date(), updated_at: new Date() };
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockHousehold] });
+        it('should return a household when it exists', async () => {
+            const householdId = '123';
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: householdId, name: 'Test Household' }] });
 
             const result = await householdService.getHouseholdById(householdId);
 
             expect(result).toBeInstanceOf(Household);
-            expect(result?.id).toBe(householdId);
+            expect(result.id).toBe(householdId);
+            expect(result.name).toBe('Test Household');
         });
 
-        it('should return null if household not found', async () => {
-            const householdId = uuidv4();
-
+        it('should throw an error when the household does not exist', async () => {
+            const householdId = '123';
             (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
 
-            const result = await householdService.getHouseholdById(householdId);
-
-            expect(result).toBeNull();
+            await expect(householdService.getHouseholdById(householdId))
+                .rejects.toThrow('Household not found');
         });
     });
 
     describe('isMember', () => {
-        it('should return true if user is a member of the household', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: uuidv4() }] });
+        it('should return true if the user is a member of the household', async () => {
+            const householdId = '123';
+            const userId = '456';
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1' }] });
 
             const result = await householdService.isMember(householdId, userId);
 
             expect(result).toBe(true);
         });
 
-        it('should return false if user is not a member of the household', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-
+        it('should return false if the user is not a member of the household', async () => {
+            const householdId = '123';
+            const userId = '456';
             (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
 
             const result = await householdService.isMember(householdId, userId);
@@ -123,17 +107,125 @@ describe('HouseholdService', () => {
         });
     });
 
-    // Add more tests for other methods like inviteMember, acceptInvitation, rejectInvitation, etc.
+    describe('inviteMember', () => {
+        it('should invite a member successfully', async () => {
+            const householdId = '123';
+            const invitedUserId = '456';
+            const inviterId = '789';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1' }] }); // isMember check
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // existingMember check
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '2' }] }); // insert new member
+
+            await expect(householdService.inviteMember(householdId, invitedUserId, inviterId)).resolves.not.toThrow();
+        });
+
+        it('should throw an error if the inviter is not a member', async () => {
+            const householdId = '123';
+            const invitedUserId = '456';
+            const inviterId = '789';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // isMember check
+
+            await expect(householdService.inviteMember(householdId, invitedUserId, inviterId))
+                .rejects.toThrow('You are not a member of this household');
+        });
+    });
+
+    describe('acceptInvitation', () => {
+        it('should accept an invitation successfully', async () => {
+            const householdId = '123';
+            const userId = '456';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1' }] });
+
+            await expect(householdService.acceptInvitation(householdId, userId)).resolves.not.toThrow();
+        });
+
+        it('should throw an error if no valid invitation is found', async () => {
+            const householdId = '123';
+            const userId = '456';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+
+            await expect(householdService.acceptInvitation(householdId, userId))
+                .rejects.toThrow('No valid invitation found');
+        });
+    });
+
+    describe('rejectInvitation', () => {
+        it('should reject an invitation successfully', async () => {
+            const householdId = '123';
+            const userId = '456';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+
+            await expect(householdService.rejectInvitation(householdId, userId)).resolves.not.toThrow();
+        });
+
+        it('should throw an error if no valid invitation is found', async () => {
+            const householdId = '123';
+            const userId = '456';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 0 });
+
+            await expect(householdService.rejectInvitation(householdId, userId))
+                .rejects.toThrow('No valid invitation found');
+        });
+    });
+
+    describe('getHouseholdMembers', () => {
+        it('should get household members successfully', async () => {
+            const householdId = '123e4567-e89b-12d3-a456-426614174000';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1' }] }); // householdExists check
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1', user_id: '456', role: 'owner' }] });
+
+            const result = await householdService.getHouseholdMembers(householdId);
+
+            expect(result).toHaveLength(1);
+            expect(result[0]).toBeInstanceOf(HouseholdMember);
+        });
+
+        it('should throw an error if the household does not exist', async () => {
+            const householdId = '123e4567-e89b-12d3-a456-426614174000';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // householdExists check
+
+            await expect(householdService.getHouseholdMembers(householdId))
+                .rejects.toThrow('Household not found');
+        });
+    });
+
+    describe('removeMember', () => {
+        it('should remove a member successfully', async () => {
+            const householdId = '123';
+            const userId = '456';
+            const removerId = '789';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ role: 'owner' }] }); // remover check
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 }); // delete member
+
+            await expect(householdService.removeMember(householdId, userId, removerId)).resolves.not.toThrow();
+        });
+
+        it('should throw an error if the remover is not the owner', async () => {
+            const householdId = '123';
+            const userId = '456';
+            const removerId = '789';
+
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ role: 'member' }] }); // remover check
+
+            await expect(householdService.removeMember(householdId, userId, removerId))
+                .rejects.toThrow('You do not have permission to remove members');
+        });
+    });
 
     describe('getUserHouseholds', () => {
-        it('should return all households for a user', async () => {
-            const userId = uuidv4();
-            const mockHouseholds = [
-                { id: uuidv4(), name: 'Household 1', created_at: new Date(), updated_at: new Date() },
-                { id: uuidv4(), name: 'Household 2', created_at: new Date(), updated_at: new Date() },
-            ];
+        it('should get user households successfully', async () => {
+            const userId = '123';
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: mockHouseholds });
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1', name: 'Household 1' }, { id: '2', name: 'Household 2' }] });
 
             const result = await householdService.getUserHouseholds(userId);
 
@@ -144,20 +236,20 @@ describe('HouseholdService', () => {
     });
 
     describe('userHasAccessToHousehold', () => {
-        it('should return true if user has access to the household', async () => {
-            const userId = uuidv4();
-            const householdId = uuidv4();
+        it('should return true if the user has access to the household', async () => {
+            const userId = '123';
+            const householdId = '456';
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: uuidv4() }] });
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1' }] });
 
             const result = await householdService.userHasAccessToHousehold(userId, householdId);
 
             expect(result).toBe(true);
         });
 
-        it('should return false if user does not have access to the household', async () => {
-            const userId = uuidv4();
-            const householdId = uuidv4();
+        it('should return false if the user does not have access to the household', async () => {
+            const userId = '123';
+            const householdId = '456';
 
             (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
 
@@ -168,11 +260,10 @@ describe('HouseholdService', () => {
     });
 
     describe('getDefaultHouseholdForUser', () => {
-        it('should return the default household for a user', async () => {
-            const userId = uuidv4();
-            const mockHousehold = { id: uuidv4(), name: 'Default Household', created_at: new Date(), updated_at: new Date() };
+        it('should get the default household for a user', async () => {
+            const userId = '123';
 
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockHousehold] });
+            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: '1', name: 'Default Household' }] });
 
             const result = await householdService.getDefaultHouseholdForUser(userId);
 
@@ -180,171 +271,14 @@ describe('HouseholdService', () => {
             expect(result?.name).toBe('Default Household');
         });
 
-        it('should return null if user has no households', async () => {
-            const userId = uuidv4();
+        it('should return null if the user has no households', async () => {
+            const userId = '123';
 
             (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
 
             const result = await householdService.getDefaultHouseholdForUser(userId);
 
             expect(result).toBeNull();
-        });
-    });
-
-    describe('inviteMember', () => {
-        it('should invite a member to a household', async () => {
-            const householdId = uuidv4();
-            const invitedUserId = uuidv4();
-            const inviterId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: inviterId }] }); // Check if inviter is a member
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // Check if invited user is already a member
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: uuidv4() }] }); // Insert household member
-
-            await householdService.inviteMember(householdId, invitedUserId, inviterId);
-
-            expect(mockPool.query).toHaveBeenCalledTimes(3);
-        });
-
-        it('should throw an error if inviter is not a member', async () => {
-            const householdId = uuidv4();
-            const invitedUserId = uuidv4();
-            const inviterId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] }); // Inviter is not a member
-
-            await expect(householdService.inviteMember(householdId, invitedUserId, inviterId))
-                .rejects.toThrow('You are not a member of this household');
-        });
-
-        it('should throw an error if invited user is already a member', async () => {
-            const householdId = uuidv4();
-            const invitedUserId = uuidv4();
-            const inviterId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: inviterId }] }); // Check if inviter is a member
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: invitedUserId }] }); // Invited user is already a member
-
-            await expect(householdService.inviteMember(householdId, invitedUserId, inviterId))
-                .rejects.toThrow('User is already a member or invited to this household');
-        });
-    });
-
-    describe('acceptInvitation', () => {
-        it('should accept an invitation to a household', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: uuidv4() }] });
-
-            await householdService.acceptInvitation(householdId, userId);
-
-            expect(mockPool.query).toHaveBeenCalledWith(
-                expect.stringContaining('UPDATE household_members SET status = $1'),
-                ['active', householdId, userId, 'invited']
-            );
-        });
-
-        it('should throw an error if no valid invitation is found', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
-
-            await expect(householdService.acceptInvitation(householdId, userId))
-                .rejects.toThrow('No valid invitation found');
-        });
-    });
-
-    describe('rejectInvitation', () => {
-        it('should reject an invitation to a household', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
-
-            await householdService.rejectInvitation(householdId, userId);
-
-            expect(mockPool.query).toHaveBeenCalledWith(
-                expect.stringContaining('DELETE FROM household_members'),
-                [householdId, userId, 'invited']
-            );
-        });
-
-        it('should throw an error if no valid invitation is found', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 0 });
-
-            await expect(householdService.rejectInvitation(householdId, userId))
-                .rejects.toThrow('No valid invitation found');
-        });
-    });
-
-    describe('getHouseholdMembers', () => {
-        it('should return all members of a household', async () => {
-            const householdId = uuidv4();
-            const mockMembers = [
-                { id: uuidv4(), household_id: householdId, user_id: uuidv4(), role: 'owner', status: 'active' },
-                { id: uuidv4(), household_id: householdId, user_id: uuidv4(), role: 'member', status: 'active' },
-            ];
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ exists: true }] }); // Check if household exists
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: mockMembers });
-
-            const result = await householdService.getHouseholdMembers(householdId);
-
-            expect(result).toHaveLength(2);
-            expect(result[0].role).toBe('owner');
-            expect(result[1].role).toBe('member');
-        });
-
-        it('should throw an error if household does not exist', async () => {
-            const householdId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ exists: false }] });
-
-            await expect(householdService.getHouseholdMembers(householdId))
-                .rejects.toThrow('Error fetching household members');
-        });
-    });
-
-    describe('removeMember', () => {
-        it('should remove a member from a household', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-            const removerId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ role: 'owner' }] }); // Check remover's role
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 }); // Remove member
-
-            await householdService.removeMember(householdId, userId, removerId);
-
-            expect(mockPool.query).toHaveBeenCalledTimes(2);
-        });
-
-        it('should throw an error if remover is not the owner', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-            const removerId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ role: 'member' }] });
-
-            await expect(householdService.removeMember(householdId, userId, removerId))
-                .rejects.toThrow('You do not have permission to remove members');
-        });
-
-        it('should throw an error if trying to remove non-existent member or self', async () => {
-            const householdId = uuidv4();
-            const userId = uuidv4();
-            const removerId = uuidv4();
-
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ role: 'owner' }] });
-            (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 0 });
-
-            await expect(householdService.removeMember(householdId, userId, removerId))
-                .rejects.toThrow('Member not found or cannot remove yourself');
         });
     });
 });

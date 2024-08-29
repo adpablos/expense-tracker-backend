@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { AppError } from '../../../utils/AppError';
 import { HouseholdService } from '../../../services/householdService';
 import {Household} from "../../../models/Household";
-import {createMockQueryResult} from "../e2e/api.test";
 
 jest.mock('pg');
 jest.mock('../../../config/logger');
@@ -131,7 +130,11 @@ describe('UserService', () => {
             const result = await userService.getUserByAuthProviderId(authProviderId);
 
             expect(mockPool.query).toHaveBeenCalledWith(
-                expect.stringMatching(/SELECT u\.\*, array_agg\(hm\.household_id\) as households.*GROUP BY u\.id/),
+                `SELECT u.*, array_agg(hm.household_id) as households
+                 FROM users u
+                 LEFT JOIN household_members hm ON u.id = hm.user_id
+                 WHERE u.auth_provider_id = $1
+                 GROUP BY u.id`,
                 [authProviderId]
             );
             expect(result).toBeInstanceOf(User);
@@ -190,19 +193,36 @@ describe('UserService', () => {
                 id: uuidv4(),
                 email: newUser.email,
                 name: newUser.name,
+                auth_provider_id: newUser.authProviderId,
+                created_at: new Date(),
+                updated_at: new Date()
             };
             const mockHouseholdResult = new Household(householdName, uuidv4(), new Date(), new Date());
 
-            (mockClient.query as jest.Mock).mockResolvedValueOnce(createMockQueryResult([mockDbResult]));
+            (mockClient.query as jest.Mock).mockImplementation((sql, params) => {
+                if (sql.includes('INSERT INTO users')) {
+                    return Promise.resolve({ rows: [mockDbResult] });
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
             mockHouseholdService.createHousehold.mockResolvedValueOnce(mockHouseholdResult);
-            (mockClient.query as jest.Mock).mockResolvedValueOnce({ rows: [{ id: uuidv4() }] }); // Create household member
 
             const result = await userService.createUserWithHousehold(newUser, householdName);
 
             expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+            expect(mockClient.query).toHaveBeenCalledWith(
+                'INSERT INTO users (id, email, name, auth_provider_id) VALUES ($1, $2, $3, $4) RETURNING *',
+                [expect.any(String), newUser.email, newUser.name, newUser.authProviderId]
+            );
             expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
             expect(result).toBeInstanceOf(User);
+            expect(result.id).toBeDefined();
+            expect(typeof result.id).toBe('string');
             expect(result.email).toBe(newUser.email);
+            expect(result.name).toBe(newUser.name);
+            expect(result.authProviderId).toBe(newUser.authProviderId);
+            expect(result.households).toContain(mockHouseholdResult.id);
             expect(mockHouseholdService.createHousehold).toHaveBeenCalled();
         });
 
