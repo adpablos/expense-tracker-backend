@@ -1,5 +1,5 @@
 // src/middleware/authMiddleware.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { expressjwt, GetVerificationKey } from 'express-jwt';
 import jwksRsa from 'jwks-rsa';
 
@@ -7,18 +7,11 @@ import pool from '../config/db';
 import logger from '../config/logger';
 import { User } from '../models/User';
 import { UserService } from '../services/userService';
-
-interface AuthRequest extends Request {
-  auth?: {
-    sub: string;
-    email: string;
-  };
-  user?: User;
-}
+import { ExtendedRequest, ExtendedRequestHandler } from '../types/express';
 
 const userService = new UserService(pool);
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authMiddleware: ExtendedRequestHandler = (req, res, next) => {
   expressjwt({
     secret: jwksRsa.expressJwtSecret({
       cache: true,
@@ -39,7 +32,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
   });
 };
 
-export const attachUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const attachUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
   if (!req.auth) {
     return res.status(401).json({ message: 'No authentication token provided' });
   }

@@ -1,9 +1,10 @@
 // src/middleware/responseLogger.ts
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 
 import logger from '../config/logger';
+import { ExtendedRequest } from '../types/express';
 
-const responseLogger = (req: Request, res: Response, next: NextFunction) => {
+const responseLogger = (req: ExtendedRequest, res: Response, next: NextFunction) => {
   const originalSend = res.send;
 
   res.send = function (body?: string | object | number | boolean | Buffer): Response {

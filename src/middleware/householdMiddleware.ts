@@ -1,16 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 
 import logger from '../config/logger';
-import { User } from '../models/User';
 import { HouseholdService } from '../services/householdService';
+import { ExtendedRequest, ExtendedRequestHandler } from '../types/express';
 import { AppError } from '../utils/AppError';
 
-interface ExtendedRequest extends Request {
-  currentHouseholdId?: string;
-  user?: User;
-}
-
-export const setCurrentHousehold = (householdService: HouseholdService) => {
+export const setCurrentHousehold = (householdService: HouseholdService): ExtendedRequestHandler => {
   return async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     const householdId = req.header('X-Household-Id');
 
@@ -47,7 +42,7 @@ export const setCurrentHousehold = (householdService: HouseholdService) => {
   };
 };
 
-export const ensureHouseholdSelected = (
+export const ensureHouseholdSelected: ExtendedRequestHandler = (
   req: ExtendedRequest,
   res: Response,
   next: NextFunction
