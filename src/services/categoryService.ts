@@ -44,7 +44,6 @@ export class CategoryService {
             const createdCategory = Category.fromDatabase(result.rows[0]);
             logger.info('Created category', { category: createdCategory });
 
-            // Notify household members about the new category
             await this.notificationService.notifyHouseholdMembers(
                 category.householdId,
                 `Nueva categoría creada: ${category.name}`
@@ -57,7 +56,7 @@ export class CategoryService {
         }
     }
 
-    async updateCategory(id: string, name: string, householdId: string): Promise<Category | null> {
+    async updateCategory(id: string, name: string, householdId: string): Promise<Category> {
         logger.info('Updating category', {id, name, householdId});
         try {
             const result = await this.db.query(
@@ -66,12 +65,11 @@ export class CategoryService {
             );
             if (result.rows.length === 0) {
                 logger.warn('Category not found', {id, householdId});
-                return null;
+                throw new AppError('Category not found', 404);
             }
             const updatedCategory = Category.fromDatabase(result.rows[0]);
             logger.info('Updated category', {category: updatedCategory});
 
-            // Notify household members about the updated category
             await this.notificationService.notifyHouseholdMembers(
                 householdId,
                 `Categoría actualizada: ${updatedCategory.name}`
@@ -80,45 +78,47 @@ export class CategoryService {
             return updatedCategory;
         } catch (error) {
             logger.error('Error updating category', {error: error});
+            if (error instanceof AppError) throw error;
             throw new AppError('Error updating category', 500);
         }
     }
 
-    async deleteCategory(id: string, householdId: string): Promise<number | null> {
+    async deleteCategory(id: string, householdId: string): Promise<void> {
         logger.info('Deleting category', { id, householdId });
         try {
             const result = await this.db.query(
                 'DELETE FROM categories WHERE id = $1 AND household_id = $2',
                 [id, householdId]
             );
+            if (result.rowCount === 0) {
+                logger.warn('Category not found', {id, householdId});
+                throw new AppError('Category not found', 404);
+            }
             logger.info('Deleted category', { id, householdId, rowCount: result.rowCount });
 
-            // Notify household members about the deleted category
             await this.notificationService.notifyHouseholdMembers(
                 householdId,
                 `Categoría eliminada: ID ${id}`,
             );
-
-            return result.rowCount;
         } catch (error: any) {
             if (error.code === '23503') {
                 logger.error('Cannot delete category due to existing subcategories: %s', error.detail);
                 throw new AppError('Cannot delete category with associated subcategories. Use force=true to force deletion.', 400);
             }
             logger.error('Error deleting category', { error });
+            if (error instanceof AppError) throw error;
             throw new AppError('Error deleting category', 500);
         }
     }
 
-    async deleteSubcategoriesByCategoryId(categoryId: string, householdId: string): Promise<number | null> {
+    async deleteSubcategoriesByCategoryId(categoryId: string, householdId: string): Promise<void> {
         logger.info('Deleting subcategories for categoryId: %s', categoryId);
         try {
-            const result = await this.db.query(
+            await this.db.query(
                 'DELETE FROM subcategories WHERE category_id = $1 AND household_id = $2',
                 [categoryId, householdId]
             );
             logger.info('Deleted subcategories for categoryId: %s', categoryId);
-            return result.rowCount;
         } catch (error) {
             logger.error('Error deleting subcategories for categoryId: %s, error: %s', categoryId, error);
             throw new AppError('Error deleting subcategories', 500);

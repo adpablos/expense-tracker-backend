@@ -34,11 +34,7 @@ export class UserService {
             logger.info('Created user', { user: createdUser });
             return createdUser;
         } catch (error: any) {
-            logger.error('Error creating user', {
-                error: error.message,
-                stack: error.stack,
-                user: user
-            });
+            logger.error('Error creating user', { error: error.message, stack: error.stack, user: user });
             if (error.code === '23505') {
                 throw new AppError('User with this email or auth provider ID already exists', 409);
             }
@@ -68,8 +64,12 @@ export class UserService {
 
             logger.info('Updated user', { user: updatedUser });
             return updatedUser;
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Error updating user', { error: error });
+            if (error instanceof AppError) throw error;
+            if (error.code === '23505') {
+                throw new AppError('Email already in use', 409);
+            }
             throw new AppError('Error updating user', 500);
         }
     }
@@ -109,7 +109,10 @@ export class UserService {
 
             await client.query('COMMIT');
 
-            const createdUser = User.fromDatabase(userResult.rows[0]);
+            const createdUser = User.fromDatabase({
+                ...userResult.rows[0],
+                households: [household.id]
+            });
             logger.info('Created user with household', { user: createdUser, householdId: household.id });
             return createdUser;
         } catch (error: any) {
@@ -196,9 +199,10 @@ export class UserService {
 
             await client.query('COMMIT');
             logger.info('Deleted user', { id });
-        } catch (error) {
+        } catch (error: any) {
             await client.query('ROLLBACK');
             logger.error('Error deleting user', { error: error });
+            if (error instanceof AppError) throw error;
             throw new AppError('Error deleting user', 500);
         } finally {
             client.release();
@@ -228,9 +232,9 @@ export class UserService {
     }
 
     private async deleteOrphanedHousehold(client: PoolClient, householdId: string, householdName: string): Promise<void> {
-        // Primero, eliminar todas las referencias en household_members
+        // First, delete all members of the household
         await client.query('DELETE FROM household_members WHERE household_id = $1', [householdId]);
-        // Luego, eliminar el hogar
+        // Then, delete the household
         await client.query('DELETE FROM households WHERE id = $1', [householdId]);
         logger.info(`Deleted orphaned household ${householdName}`, { householdId });
     }

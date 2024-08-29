@@ -79,19 +79,20 @@ export class HouseholdService {
         }
     }
 
-    async getHouseholdById(id: string): Promise<Household | null> {
+    async getHouseholdById(id: string): Promise<Household> {
         logger.info('Fetching household by ID', { id });
         try {
             const result = await this.db.query('SELECT * FROM households WHERE id = $1', [id]);
             if (result.rows.length === 0) {
                 logger.info('Household not found', { id });
-                return null;
+                throw new AppError('Household not found', 404);
             }
             const household = Household.fromDatabase(result.rows[0]);
             logger.info('Fetched household', { household });
             return household;
         } catch (error) {
             logger.error('Error fetching household', { error: error });
+            if (error instanceof AppError) throw error;
             throw new AppError('Error fetching household', 500);
         }
     }

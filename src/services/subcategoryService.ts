@@ -44,23 +44,22 @@ export class SubcategoryService {
             const createdSubcategory = Subcategory.fromDatabase(result.rows[0]);
             logger.info('Created subcategory', { subcategory: createdSubcategory });
 
-            // Notify household members about the new subcategory
             await this.notificationService.notifyHouseholdMembers(
                 createdSubcategory.householdId,
-                `Nueva categoría creada: ${createdSubcategory.name}`
+                `Nueva subcategoría creada: ${createdSubcategory.name}`
             );
 
             return createdSubcategory;
         } catch (error: any) {
             logger.error('Error creating subcategory', { error: error });
-            if (error.code === '23503') { // This is the PostgreSQL error code for foreign key violation
+            if (error.code === '23503') {
                 throw new AppError('Parent category not found', 404);
             }
             throw new AppError('Error creating subcategory', 500);
         }
     }
 
-    async updateSubcategory(id: string, name: string, categoryId: string, householdId: string): Promise<Subcategory | null> {
+    async updateSubcategory(id: string, name: string, categoryId: string, householdId: string): Promise<Subcategory> {
         logger.info('Updating subcategory', {id, name, categoryId, householdId});
         try {
             const result = await this.db.query(
@@ -69,12 +68,11 @@ export class SubcategoryService {
             );
             if (result.rows.length === 0) {
                 logger.warn('Subcategory not found', {id, householdId});
-                return null;
+                throw new AppError('Subcategory not found', 404);
             }
             const updatedSubcategory = Subcategory.fromDatabase(result.rows[0]);
             logger.info('Updated subcategory', {subcategory: updatedSubcategory});
 
-            // Notify household members about the updated category
             await this.notificationService.notifyHouseholdMembers(
                 householdId,
                 `Subcategoría actualizada: ${updatedSubcategory.name}`
@@ -83,28 +81,31 @@ export class SubcategoryService {
             return updatedSubcategory;
         } catch (error) {
             logger.error('Error updating subcategory', {error: error});
+            if (error instanceof AppError) {
+                throw error; // Re-lanzamos el AppError original
+            }
+            // Si no es un AppError, lanzamos un nuevo error genérico
             throw new AppError('Error updating subcategory', 500);
         }
     }
 
-    async deleteSubcategory(id: string, householdId: string): Promise<number | null> {
+    async deleteSubcategory(id: string, householdId: string): Promise<void> {
         logger.info('Deleting subcategory', {id, householdId});
         try {
             const result = await this.db.query('DELETE FROM subcategories WHERE id = $1 AND household_id = $2', [id, householdId]);
             if (result.rowCount === 0) {
                 logger.warn('Subcategory not found', {id, householdId});
-                return null;
+                throw new AppError('Subcategory not found', 404);
             }
             logger.info('Deleted subcategory', {id, householdId, rowCount: result.rowCount});
 
-            // Notify household members about the deleted subcategory
             await this.notificationService.notifyHouseholdMembers(
                 householdId,
                 `Subcategoría eliminada: ID ${id}`,
             );
-            return result.rowCount;
         } catch (error) {
             logger.error('Error deleting subcategory', {error: error});
+            if (error instanceof AppError) throw error;
             throw new AppError('Error deleting subcategory', 500);
         }
     }
