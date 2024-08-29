@@ -8,8 +8,20 @@
     "esModuleInterop": true,
     "skipLibCheck": false,
     "forceConsistentCasingInFileNames": true,
-    "types": ["jest", "supertest", "node"]
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": [
+      "reflect-metadata",
+      "jest",
+      "supertest",
+      "node"
+    ]
   },
-  "include": ["src/**/*", "**/*.test.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*",
+    "**/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
