@@ -1,25 +1,18 @@
 module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint', 'react', 'import', 'prettier'],
+  plugins: ['@typescript-eslint', 'import', 'prettier'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:react/recommended',
     'plugin:import/errors',
     'plugin:import/warnings',
     'plugin:import/typescript',
     'plugin:prettier/recommended',
   ],
   env: {
-    browser: true,
     es2021: true,
     node: true,
-  },
-  settings: {
-    react: {
-      version: 'detect',
-    },
   },
   rules: {
     'no-unused-vars': 'off',
@@ -28,7 +21,6 @@ module.exports = {
       { varsIgnorePattern: '^_', argsIgnorePattern: '^_' },
     ],
     '@typescript-eslint/no-explicit-any': 'error',
-    'react/prop-types': 'off',
     'import/no-unresolved': 'error',
     'import/named': 'error',
     'import/namespace': 'error',
