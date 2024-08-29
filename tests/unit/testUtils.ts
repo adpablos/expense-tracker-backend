@@ -1,13 +1,16 @@
 import { QueryResult, QueryResultRow } from 'pg';
 
-export function createMockQueryResult<T extends QueryResultRow>(rows: T[], rowCount?: number): QueryResult<T> {
-    return {
-        rows,
-        rowCount: rowCount ?? rows.length,
-        command: '',
-        oid: 0,
-        fields: []
-    };
+export function createMockQueryResult<T extends QueryResultRow>(
+  rows: T[],
+  rowCount?: number
+): QueryResult<T> {
+  return {
+    rows,
+    rowCount: rowCount ?? rows.length,
+    command: '',
+    oid: 0,
+    fields: [],
+  };
 }
 
 export const mockUserId = 'd59c6410-45d8-4646-84be-6a24a14de81c';
