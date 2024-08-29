@@ -13,7 +13,7 @@
     "prepare-prod-db": "ts-node scripts/prepare_production_db.ts",
     "lint": "eslint \"src/**/*.{js,ts}\"",
     "lint:fix": "eslint \"src/**/*.{js,ts}\" --fix",
-    "format": "prettier --write \"src/**/*.{js,ts,json}\""
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\" \"tests/**/*.{js,jsx,ts,tsx}\""
   },
   "keywords": [],
   "author": "",
