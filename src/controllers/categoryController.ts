@@ -1,27 +1,28 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { Category } from '../models/Category';
 import { CategoryService } from '../services/categoryService';
 import { DI_TYPES } from '../types/di';
+import { ExtendedRequest } from '../types/express';
 
 @injectable()
 export class CategoryController {
   constructor(@inject(DI_TYPES.CategoryService) private categoryService: CategoryService) {}
 
-  public getCategories = async (req: Request, res: Response, next: NextFunction) => {
+  public getCategories = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
-      const categories = await this.categoryService.getAllCategories(req.currentHouseholdId);
+      const categories = await this.categoryService.getAllCategories(req.currentHouseholdId!);
       res.json(categories);
     } catch (error) {
       next(error);
     }
   };
 
-  public addCategory = async (req: Request, res: Response, next: NextFunction) => {
+  public addCategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { name } = req.body;
-      const newCategory = new Category(name, req.currentHouseholdId);
+      const newCategory = new Category(name, req.currentHouseholdId!);
       const createdCategory = await this.categoryService.createCategory(newCategory);
       res.status(201).json(createdCategory);
     } catch (error) {
@@ -29,14 +30,14 @@ export class CategoryController {
     }
   };
 
-  public updateCategory = async (req: Request, res: Response, next: NextFunction) => {
+  public updateCategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { name } = req.body;
       const updatedCategory = await this.categoryService.updateCategory(
         id,
         name,
-        req.currentHouseholdId
+        req.currentHouseholdId!
       );
       res.json(updatedCategory);
     } catch (error) {
@@ -44,16 +45,16 @@ export class CategoryController {
     }
   };
 
-  public deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
+  public deleteCategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const forceDelete = req.query.force === 'true';
 
       if (forceDelete) {
-        await this.categoryService.deleteSubcategoriesByCategoryId(id, req.currentHouseholdId);
+        await this.categoryService.deleteSubcategoriesByCategoryId(id, req.currentHouseholdId!);
       }
 
-      await this.categoryService.deleteCategory(id, req.currentHouseholdId);
+      await this.categoryService.deleteCategory(id, req.currentHouseholdId!);
       res.status(204).send();
     } catch (error) {
       next(error);

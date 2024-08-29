@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { Household } from '../models/Household';
@@ -7,6 +7,7 @@ import { NotificationService } from '../services/external/notificationService';
 import { HouseholdService } from '../services/householdService';
 import { UserService } from '../services/userService';
 import { DI_TYPES } from '../types/di';
+import { ExtendedRequest } from '../types/express';
 import { AppError } from '../utils/AppError';
 
 @injectable()
@@ -17,7 +18,7 @@ export class HouseholdController {
     @inject(DI_TYPES.NotificationService) private notificationService: NotificationService
   ) {}
 
-  public createHousehold = async (req: Request, res: Response, next: NextFunction) => {
+  public createHousehold = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { name } = req.body;
 
@@ -38,7 +39,7 @@ export class HouseholdController {
     }
   };
 
-  public inviteMember = async (req: Request, res: Response, next: NextFunction) => {
+  public inviteMember = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { householdId } = req.params;
       const { invitedUserId } = req.body;
@@ -49,7 +50,7 @@ export class HouseholdController {
     }
   };
 
-  public acceptInvitation = async (req: Request, res: Response, next: NextFunction) => {
+  public acceptInvitation = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { householdId } = req.params;
       await this.householdService.acceptInvitation(householdId, req.user!.id);
@@ -59,7 +60,7 @@ export class HouseholdController {
     }
   };
 
-  public rejectInvitation = async (req: Request, res: Response, next: NextFunction) => {
+  public rejectInvitation = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { householdId } = req.params;
       await this.householdService.rejectInvitation(householdId, req.user!.id);
@@ -69,7 +70,7 @@ export class HouseholdController {
     }
   };
 
-  public getHouseholdMembers = async (req: Request, res: Response, next: NextFunction) => {
+  public getHouseholdMembers = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { householdId } = req.params;
       const members = await this.householdService.getHouseholdMembers(householdId);
@@ -79,7 +80,7 @@ export class HouseholdController {
     }
   };
 
-  public removeMember = async (req: Request, res: Response, next: NextFunction) => {
+  public removeMember = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { householdId, userId } = req.params;
       await this.householdService.removeMember(householdId, userId, req.user!.id);

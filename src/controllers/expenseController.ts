@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import ffmpeg from 'fluent-ffmpeg';
 import { inject, injectable } from 'inversify';
 
@@ -15,6 +15,7 @@ import {
   transcribeAudio,
 } from '../services/external/openaiService';
 import { DI_TYPES } from '../types/di';
+import { ExtendedRequest } from '../types/express';
 import { AppError } from '../utils/AppError';
 import { encodeImage } from '../utils/encodeImage';
 
@@ -24,7 +25,7 @@ const ffprobe = promisify(ffmpeg.ffprobe);
 export class ExpenseController {
   constructor(@inject(DI_TYPES.ExpenseService) private expenseService: ExpenseService) {}
 
-  public getExpenses = async (req: Request, res: Response, next: NextFunction) => {
+  public getExpenses = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const {
         startDate,
@@ -43,7 +44,7 @@ export class ExpenseController {
         subcategory: subcategory as string,
         amount: amount ? parseFloat(amount as string) : undefined,
         description: description as string,
-        householdId: req.currentHouseholdId,
+        householdId: req.currentHouseholdId!,
         page: parseInt(page as string, 10),
         limit: parseInt(limit as string, 10),
       };
@@ -59,7 +60,7 @@ export class ExpenseController {
     }
   };
 
-  public addExpense = async (req: Request, res: Response, next: NextFunction) => {
+  public addExpense = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { description, amount, category, subcategory, expenseDatetime } = req.body;
       const newExpense = new Expense(
@@ -67,7 +68,7 @@ export class ExpenseController {
         amount,
         category,
         subcategory,
-        req.currentHouseholdId,
+        req.currentHouseholdId!,
         new Date(expenseDatetime)
       );
       const createdExpense = await this.expenseService.createExpense(newExpense, req.user!.id);
@@ -77,7 +78,7 @@ export class ExpenseController {
     }
   };
 
-  public updateExpense = async (req: Request, res: Response, next: NextFunction) => {
+  public updateExpense = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { description, amount, category, subcategory, expenseDatetime } = req.body;
@@ -91,7 +92,7 @@ export class ExpenseController {
           expenseDatetime: new Date(expenseDatetime),
           householdId: req.currentHouseholdId,
         },
-        req.currentHouseholdId,
+        req.currentHouseholdId!,
         req.user!.id
       );
       if (!updatedExpense) {
@@ -103,17 +104,17 @@ export class ExpenseController {
     }
   };
 
-  public deleteExpense = async (req: Request, res: Response, next: NextFunction) => {
+  public deleteExpense = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      await this.expenseService.deleteExpense(id, req.currentHouseholdId, req.user!.id);
+      await this.expenseService.deleteExpense(id, req.currentHouseholdId!, req.user!.id);
       res.status(204).send();
     } catch (error) {
       next(error);
     }
   };
 
-  public uploadExpense = async (req: Request, res: Response, next: NextFunction) => {
+  public uploadExpense = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     if (!req.file || !req.file.path) {
       return next(new AppError('No file uploaded', 400));
     }

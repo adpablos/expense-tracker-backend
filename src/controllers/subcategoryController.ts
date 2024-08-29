@@ -1,9 +1,10 @@
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { Subcategory } from '../models/Subcategory';
 import { SubcategoryService } from '../services/subcategoryService';
 import { DI_TYPES } from '../types/di';
+import { ExtendedRequest } from '../types/express';
 
 @injectable()
 export class SubcategoryController {
@@ -11,10 +12,10 @@ export class SubcategoryController {
     @inject(DI_TYPES.SubcategoryService) private subcategoryService: SubcategoryService
   ) {}
 
-  public getSubcategories = async (req: Request, res: Response, next: NextFunction) => {
+  public getSubcategories = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const subcategories = await this.subcategoryService.getAllSubcategories(
-        req.currentHouseholdId
+        req.currentHouseholdId!
       );
       res.json(subcategories);
     } catch (error) {
@@ -22,10 +23,10 @@ export class SubcategoryController {
     }
   };
 
-  public addSubcategory = async (req: Request, res: Response, next: NextFunction) => {
+  public addSubcategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { name, categoryId } = req.body;
-      const newSubcategory = new Subcategory(name, categoryId, req.currentHouseholdId);
+      const newSubcategory = new Subcategory(name, categoryId, req.currentHouseholdId!);
       const createdSubcategory = await this.subcategoryService.createSubcategory(newSubcategory);
       res.status(201).json(createdSubcategory);
     } catch (error) {
@@ -33,7 +34,7 @@ export class SubcategoryController {
     }
   };
 
-  public updateSubcategory = async (req: Request, res: Response, next: NextFunction) => {
+  public updateSubcategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { name, categoryId } = req.body;
@@ -41,7 +42,7 @@ export class SubcategoryController {
         id,
         name,
         categoryId,
-        req.currentHouseholdId
+        req.currentHouseholdId!
       );
       res.json(updatedSubcategory);
     } catch (error) {
@@ -49,10 +50,10 @@ export class SubcategoryController {
     }
   };
 
-  public deleteSubcategory = async (req: Request, res: Response, next: NextFunction) => {
+  public deleteSubcategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      await this.subcategoryService.deleteSubcategory(id, req.currentHouseholdId);
+      await this.subcategoryService.deleteSubcategory(id, req.currentHouseholdId!);
       res.status(204).send();
     } catch (error) {
       next(error);
