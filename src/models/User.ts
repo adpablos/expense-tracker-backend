@@ -21,7 +21,7 @@ export class User {
             data.name,
             data.auth_provider_id,
             data.id,
-            data.households || []
+            Array.isArray(data.households) ? data.households : [data.households].filter(Boolean)
         );
     }
 

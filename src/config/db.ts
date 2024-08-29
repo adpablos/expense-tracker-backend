@@ -6,7 +6,9 @@ import logger from '../config/logger';
 const parseUUID = (val: string) => val;
 
 // Set the type parser for the UUID type (OID 2950)
-types.setTypeParser(2950, parseUUID);
+if (types.setTypeParser) {
+    types.setTypeParser(2950, parseUUID);
+}
 
 const pool = new Pool({
     user: config.dbUser,
