@@ -4,7 +4,7 @@ import { NextFunction, Response } from 'express';
 import logger from '../config/logger';
 import { ExtendedRequest } from '../types/express';
 
-const requestLogger = (req: ExtendedRequest, res: Response, next: NextFunction) => {
+export const requestLogger = (req: ExtendedRequest, res: Response, next: NextFunction) => {
   logger.info('Incoming request', {
     method: req.method,
     url: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
@@ -14,5 +14,3 @@ const requestLogger = (req: ExtendedRequest, res: Response, next: NextFunction) 
   });
   next();
 };
-
-export default requestLogger;

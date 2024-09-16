@@ -5,6 +5,8 @@ import logger from '../config/logger';
 import { AppError } from '../utils/AppError';
 
 export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
+  console.log('Error llegando al errorHandler:', err);
+
   logger.error('Error: %s', err.message, {
     method: req.method,
     url: req.url,

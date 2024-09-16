@@ -2,24 +2,20 @@ import express from 'express';
 import { Container } from 'inversify';
 
 import { CategoryController } from '../controllers/categoryController';
-import { attachUser, authMiddleware } from '../middleware/authMiddleware';
-import { ensureHouseholdSelected, setCurrentHousehold } from '../middleware/householdMiddleware';
-import requestLogger from '../middleware/requestLogger';
-import responseLogger from '../middleware/responseLogger';
-import { HouseholdService } from '../services/householdService';
+import { AuthMiddleware } from '../middleware/authMiddleware';
+import { HouseholdMiddleware } from '../middleware/householdMiddleware';
 import { DI_TYPES } from '../types/di';
 
 export default function (container: Container) {
   const router = express.Router();
   const categoryController = container.get<CategoryController>(DI_TYPES.CategoryController);
-  const householdService = container.get<HouseholdService>(DI_TYPES.HouseholdService);
+  const authMiddleware = container.get<AuthMiddleware>(DI_TYPES.AuthMiddleware);
+  const householdMiddleware = container.get<HouseholdMiddleware>(DI_TYPES.HouseholdMiddleware);
 
-  router.use(requestLogger);
-  router.use(responseLogger);
-  router.use(authMiddleware);
-  router.use(attachUser);
-  router.use(setCurrentHousehold(householdService));
-  router.use(ensureHouseholdSelected);
+  router.use(authMiddleware.authMiddleware);
+  router.use(authMiddleware.attachUser);
+  router.use(householdMiddleware.setCurrentHousehold);
+  router.use(householdMiddleware.ensureHouseholdSelected);
 
   /**
    * @swagger

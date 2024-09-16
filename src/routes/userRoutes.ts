@@ -2,17 +2,13 @@ import express from 'express';
 import { Container } from 'inversify';
 
 import { UserController } from '../controllers/userController';
-import { attachUser, authMiddleware } from '../middleware/authMiddleware';
-import requestLogger from '../middleware/requestLogger';
-import responseLogger from '../middleware/responseLogger';
+import { AuthMiddleware } from '../middleware/authMiddleware';
 import { DI_TYPES } from '../types/di';
 
 export default function userRoutes(container: Container) {
   const router = express.Router();
   const userController = container.get<UserController>(DI_TYPES.UserController);
-
-  router.use(requestLogger);
-  router.use(responseLogger);
+  const authMiddleware = container.get<AuthMiddleware>(DI_TYPES.AuthMiddleware);
 
   /**
    * @swagger
@@ -71,8 +67,8 @@ export default function userRoutes(container: Container) {
    ****************** Protected routes *****************
    ****************************************************/
 
-  router.use(authMiddleware);
-  router.use(attachUser);
+  router.use(authMiddleware.authMiddleware);
+  router.use(authMiddleware.attachUser);
 
   /**
    * @swagger

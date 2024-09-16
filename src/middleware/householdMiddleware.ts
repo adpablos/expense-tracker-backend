@@ -1,12 +1,21 @@
 import { Response, NextFunction } from 'express';
+import { injectable, inject } from 'inversify';
 
 import logger from '../config/logger';
 import { HouseholdService } from '../services/householdService';
+import { DI_TYPES } from '../types/di';
 import { ExtendedRequest, ExtendedRequestHandler } from '../types/express';
 import { AppError } from '../utils/AppError';
 
-export const setCurrentHousehold = (householdService: HouseholdService): ExtendedRequestHandler => {
-  return async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+@injectable()
+export class HouseholdMiddleware {
+  constructor(@inject(DI_TYPES.HouseholdService) private householdService: HouseholdService) {}
+
+  public setCurrentHousehold: ExtendedRequestHandler = async (
+    req: ExtendedRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     const householdId = req.header('X-Household-Id');
 
     if (!req.user) {
@@ -16,7 +25,10 @@ export const setCurrentHousehold = (householdService: HouseholdService): Extende
 
     try {
       if (householdId) {
-        const hasAccess = await householdService.userHasAccessToHousehold(req.user.id, householdId);
+        const hasAccess = await this.householdService.userHasAccessToHousehold(
+          req.user.id,
+          householdId
+        );
         if (!hasAccess) {
           logger.warn(
             `User ${req.user.id} attempted to access unauthorized household ${householdId}`
@@ -25,7 +37,9 @@ export const setCurrentHousehold = (householdService: HouseholdService): Extende
         }
         req.currentHouseholdId = householdId;
       } else {
-        const defaultHousehold = await householdService.getDefaultHouseholdForUser(req.user.id);
+        const defaultHousehold = await this.householdService.getDefaultHouseholdForUser(
+          req.user.id
+        );
         if (!defaultHousehold) {
           logger.warn(`No default household found for user ${req.user.id}`);
           return next(new AppError('No household selected and no default household found', 400));
@@ -40,15 +54,15 @@ export const setCurrentHousehold = (householdService: HouseholdService): Extende
       next(new AppError('Error setting current household', 500));
     }
   };
-};
 
-export const ensureHouseholdSelected: ExtendedRequestHandler = (
-  req: ExtendedRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  if (!req.currentHouseholdId) {
-    return next(new AppError('No household selected', 400));
-  }
-  next();
-};
+  public ensureHouseholdSelected: ExtendedRequestHandler = (
+    req: ExtendedRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
+    if (!req.currentHouseholdId) {
+      return next(new AppError('No household selected', 400));
+    }
+    next();
+  };
+}

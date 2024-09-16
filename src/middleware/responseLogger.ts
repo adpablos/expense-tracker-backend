@@ -4,7 +4,7 @@ import { NextFunction, Response } from 'express';
 import logger from '../config/logger';
 import { ExtendedRequest } from '../types/express';
 
-const responseLogger = (req: ExtendedRequest, res: Response, next: NextFunction) => {
+export const responseLogger = (req: ExtendedRequest, res: Response, next: NextFunction) => {
   const originalSend = res.send;
 
   res.send = function (body?: string | object | number | boolean | Buffer): Response {
@@ -13,11 +13,9 @@ const responseLogger = (req: ExtendedRequest, res: Response, next: NextFunction)
       body,
     });
 
-    res.send = originalSend; // Reset send method to its original implementation
+    res.send = originalSend;
     return res.send(body);
   };
 
   next();
 };
-
-export default responseLogger;

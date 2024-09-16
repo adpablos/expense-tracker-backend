@@ -2,19 +2,20 @@ import express from 'express';
 import { Container } from 'inversify';
 
 import { HouseholdController } from '../controllers/householdController';
-import { attachUser, authMiddleware } from '../middleware/authMiddleware';
-import requestLogger from '../middleware/requestLogger';
-import responseLogger from '../middleware/responseLogger';
+import { AuthMiddleware } from '../middleware/authMiddleware';
+import { HouseholdMiddleware } from '../middleware/householdMiddleware';
 import { DI_TYPES } from '../types/di';
 
 export default function (container: Container) {
   const router = express.Router();
   const householdController = container.get<HouseholdController>(DI_TYPES.HouseholdController);
+  const authMiddleware = container.get<AuthMiddleware>(DI_TYPES.AuthMiddleware);
+  const householdMiddleware = container.get<HouseholdMiddleware>(DI_TYPES.HouseholdMiddleware);
 
-  router.use(requestLogger);
-  router.use(responseLogger);
-  router.use(authMiddleware);
-  router.use(attachUser);
+  router.use(authMiddleware.authMiddleware);
+  router.use(authMiddleware.attachUser);
+  router.use(householdMiddleware.setCurrentHousehold);
+  router.use(householdMiddleware.ensureHouseholdSelected);
 
   /**
    * @swagger

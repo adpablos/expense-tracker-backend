@@ -5,21 +5,33 @@ import { Container } from 'inversify';
 import multer from 'multer';
 
 import { ExpenseController } from '../controllers/expenseController';
-import { attachUser, authMiddleware } from '../middleware/authMiddleware';
-import { ensureHouseholdSelected, setCurrentHousehold } from '../middleware/householdMiddleware';
-import requestLogger from '../middleware/requestLogger';
-import responseLogger from '../middleware/responseLogger';
-import { HouseholdService } from '../services/householdService';
+import { AuthMiddleware } from '../middleware/authMiddleware';
+import { HouseholdMiddleware } from '../middleware/householdMiddleware';
 import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
-export default function (container: Container) {
+/**
+ * Define the routes for expense operations.
+ * @param container Inversify container for dependency injection.
+ * @param storage Optionally, a multer storage engine.
+ * @returns Express router with the defined routes.
+ */
+export default function (container: Container, storage?: multer.StorageEngine) {
   const router = express.Router();
   const expenseController = container.get<ExpenseController>(DI_TYPES.ExpenseController);
-  const householdService = container.get<HouseholdService>(DI_TYPES.HouseholdService);
+  const authMiddleware = container.get<AuthMiddleware>(DI_TYPES.AuthMiddleware);
+  const householdMiddleware = container.get<HouseholdMiddleware>(DI_TYPES.HouseholdMiddleware);
 
   const upload = multer({
-    dest: 'uploads/',
+    storage:
+      storage ||
+      multer.diskStorage({
+        destination: 'uploads/',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + '-' + file.originalname);
+        },
+      }),
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max file size
     fileFilter: (req, file, cb) => {
       const fileTypes = /jpeg|jpg|png|webp|gif|flac|m4a|mp3|mp4|mpeg|mpga|oga|ogg|wav|webm/;
@@ -34,12 +46,10 @@ export default function (container: Container) {
     },
   });
 
-  router.use(requestLogger);
-  router.use(responseLogger);
-  router.use(authMiddleware);
-  router.use(attachUser);
-  router.use(setCurrentHousehold(householdService));
-  router.use(ensureHouseholdSelected);
+  router.use(authMiddleware.authMiddleware);
+  router.use(authMiddleware.attachUser);
+  router.use(householdMiddleware.setCurrentHousehold);
+  router.use(householdMiddleware.ensureHouseholdSelected);
 
   /**
    * @swagger
