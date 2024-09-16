@@ -1,3 +1,5 @@
+// jest.config.ts
+
 import type { Config } from '@jest/types';
 
 const config: Config.InitialOptions = {
@@ -10,6 +12,8 @@ const config: Config.InitialOptions = {
       'ts-jest',
       {
         tsconfig: 'tsconfig.json',
+        diagnostics: false,
+        isolatedModules: true,
       },
     ],
   },
@@ -19,6 +23,21 @@ const config: Config.InitialOptions = {
   coverageDirectory: 'coverage',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.ts', '!src/server.ts'],
   verbose: true,
+  coverageThreshold: {
+    global: {
+      statements: 80,
+      branches: 70,
+      functions: 80,
+      lines: 80,
+    },
+  },
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    'src/swagger.ts',
+    'src/config/*',
+    'src/index.ts',
+    'src/server.ts',
+  ],
 };
 
 export default config;
