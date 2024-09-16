@@ -1,101 +1,116 @@
 import 'reflect-metadata';
 import { Container } from 'inversify';
-import { DI_TYPES } from '../src/types/di';
-import { UserService } from '../src/services/userService';
-import { HouseholdService } from '../src/services/householdService';
-import { ExpenseService } from '../src/services/expenseService';
-import { CategoryService } from '../src/services/categoryService';
-import { SubcategoryService } from '../src/services/subcategoryService';
-import { NotificationService } from '../src/services/external/notificationService';
-import { UserController } from '../src/controllers/userController';
-import { HouseholdController } from '../src/controllers/householdController';
-import { ExpenseController } from '../src/controllers/expenseController';
-import { CategoryController } from '../src/controllers/categoryController';
-import { SubcategoryController } from '../src/controllers/subcategoryController';
+import { Pool } from 'pg';
 
-export function createTestContainer() {
+import { CategoryRepository } from '../src/repositories/categoryRepository';
+import { ExpenseRepository } from '../src/repositories/expenseRepository';
+import { HouseholdRepository } from '../src/repositories/householdRepository';
+import { SubcategoryRepository } from '../src/repositories/subcategoryRepository';
+import { UserRepository } from '../src/repositories/userRepository';
+import { DI_TYPES } from '../src/types/di';
+
+// Importaciones de mocks
+
+import {
+  createMockAuthMiddleware,
+  createMockHouseholdMiddleware,
+  mockRequestLogger,
+  mockResponseLogger,
+} from './unit/mocks/middlewareMocks';
+import {
+  mockUserRepository,
+  mockHouseholdRepository,
+  mockCategoryRepository,
+  mockExpenseRepository,
+  mockSubcategoryRepository,
+} from './unit/mocks/repositoryMocks';
+import {
+  mockUserService,
+  mockHouseholdService,
+  mockExpenseService,
+  mockCategoryService,
+  mockSubcategoryService,
+  mockNotificationService,
+  mockOpenAIService,
+  mockTempFileHandler,
+  mockCategoryHierarchyService,
+} from './unit/mocks/serviceMocks';
+
+export function createTestContainer(
+  options: {
+    mockServices?: boolean;
+    mockRepositories?: boolean;
+    mockMiddleware?: boolean;
+  } = {}
+) {
   const container = new Container();
 
-  // Mock services
-  const mockUserService = {
-    getUserByAuthProviderId: jest.fn(),
-    updateUser: jest.fn(),
-    deleteUser: jest.fn(),
-    createUser: jest.fn(),
-    createUserWithHousehold: jest.fn(),
-    getUserById: jest.fn(),
-    getUserHouseholds: jest.fn(),
+  // Mock Pool (siempre mockeado para evitar conexiones reales a la base de datos)
+  const mockPool = {
+    connect: jest.fn(),
+    query: jest.fn(),
+    end: jest.fn(),
+    on: jest.fn(),
   };
+  container.bind<Pool>(DI_TYPES.Pool).toConstantValue(mockPool as unknown as Pool);
 
-  const mockHouseholdService = {
-    createHousehold: jest.fn(),
-    getUserHouseholds: jest.fn(),
-    getHouseholdById: jest.fn(),
-    inviteMember: jest.fn(),
-    acceptInvitation: jest.fn(),
-    rejectInvitation: jest.fn(),
-    getHouseholdMembers: jest.fn(),
-    removeMember: jest.fn(),
-    isMember: jest.fn(),
-    userHasAccessToHousehold: jest.fn(),
-    getDefaultHouseholdForUser: jest.fn(),
-    householdExists: jest.fn(),
-  };
+  if (options.mockServices) {
+    // Bind mock services
+    container.bind(DI_TYPES.UserService).toConstantValue(mockUserService);
+    container.bind(DI_TYPES.HouseholdService).toConstantValue(mockHouseholdService);
+    container.bind(DI_TYPES.ExpenseService).toConstantValue(mockExpenseService);
+    container.bind(DI_TYPES.CategoryService).toConstantValue(mockCategoryService);
+    container.bind(DI_TYPES.SubcategoryService).toConstantValue(mockSubcategoryService);
+    container.bind(DI_TYPES.NotificationService).toConstantValue(mockNotificationService);
+    container.bind(DI_TYPES.OpenAIService).toConstantValue(mockOpenAIService);
+    container.bind(DI_TYPES.CategoryHierarchyService).toConstantValue(mockCategoryHierarchyService);
+    container.bind(DI_TYPES.TempFileHandler).toConstantValue(mockTempFileHandler);
+  }
 
-  const mockExpenseService = {
-    getExpenses: jest.fn(),
-    createExpense: jest.fn(),
-    updateExpense: jest.fn(),
-    deleteExpense: jest.fn(),
-    uploadExpense: jest.fn(),
-  };
+  if (options.mockRepositories) {
+    // Bind mock repositories
+    container.bind(DI_TYPES.UserRepository).toConstantValue(mockUserRepository);
+    container.bind(DI_TYPES.HouseholdRepository).toConstantValue(mockHouseholdRepository);
+    container.bind(DI_TYPES.CategoryRepository).toConstantValue(mockCategoryRepository);
+    container.bind(DI_TYPES.ExpenseRepository).toConstantValue(mockExpenseRepository);
+    container.bind(DI_TYPES.SubcategoryRepository).toConstantValue(mockSubcategoryRepository);
+  } else {
+    // Bind real CategoryRepository for repository tests
+    container.bind<CategoryRepository>(DI_TYPES.CategoryRepository).to(CategoryRepository);
+    container.bind<ExpenseRepository>(DI_TYPES.ExpenseRepository).to(ExpenseRepository);
+    container.bind<HouseholdRepository>(DI_TYPES.HouseholdRepository).to(HouseholdRepository);
+    container.bind<SubcategoryRepository>(DI_TYPES.SubcategoryRepository).to(SubcategoryRepository);
+    container.bind<UserRepository>(DI_TYPES.UserRepository).to(UserRepository);
+  }
 
-  const mockCategoryService = {
-    getAllCategories: jest.fn(),
-    createCategory: jest.fn(),
-    updateCategory: jest.fn(),
-    deleteCategory: jest.fn(),
-    deleteSubcategoriesByCategoryId: jest.fn(),
-  };
+  if (options.mockMiddleware) {
+    // Create mock HouseholdService with userHasAccessToHousehold method set to always return true
+    const mockHouseholdService = {
+      userHasAccessToHousehold: jest.fn().mockResolvedValue(true),
+    };
 
-  const mockSubcategoryService = {
-    getAllSubcategories: jest.fn(),
-    createSubcategory: jest.fn(),
-    updateSubcategory: jest.fn(),
-    deleteSubcategory: jest.fn(),
-  };
-
-  const mockNotificationService = {
-    sendPushNotification: jest.fn(),
-    notifyHouseholdMembers: jest.fn(),
-  };
-
-  // Bind mock services
-  container
-    .bind<UserService>(DI_TYPES.UserService)
-    .toConstantValue(mockUserService as unknown as UserService);
-  container
-    .bind<HouseholdService>(DI_TYPES.HouseholdService)
-    .toConstantValue(mockHouseholdService as unknown as HouseholdService);
-  container
-    .bind<ExpenseService>(DI_TYPES.ExpenseService)
-    .toConstantValue(mockExpenseService as unknown as ExpenseService);
-  container
-    .bind<CategoryService>(DI_TYPES.CategoryService)
-    .toConstantValue(mockCategoryService as unknown as CategoryService);
-  container
-    .bind<SubcategoryService>(DI_TYPES.SubcategoryService)
-    .toConstantValue(mockSubcategoryService as unknown as SubcategoryService);
-  container
-    .bind<NotificationService>(DI_TYPES.NotificationService)
-    .toConstantValue(mockNotificationService as unknown as NotificationService);
-
-  // Bind controllers
-  container.bind<UserController>(DI_TYPES.UserController).to(UserController);
-  container.bind<HouseholdController>(DI_TYPES.HouseholdController).to(HouseholdController);
-  container.bind<ExpenseController>(DI_TYPES.ExpenseController).to(ExpenseController);
-  container.bind<CategoryController>(DI_TYPES.CategoryController).to(CategoryController);
-  container.bind<SubcategoryController>(DI_TYPES.SubcategoryController).to(SubcategoryController);
+    // Bind mock middleware
+    container.bind(DI_TYPES.AuthMiddleware).toConstantValue(createMockAuthMiddleware());
+    container
+      .bind(DI_TYPES.HouseholdMiddleware)
+      .toConstantValue(createMockHouseholdMiddleware(mockHouseholdService));
+    container.bind(DI_TYPES.RequestLogger).toConstantValue(mockRequestLogger);
+    container.bind(DI_TYPES.ResponseLogger).toConstantValue(mockResponseLogger);
+  }
 
   return container;
+}
+
+// Funciones de ayuda para crear contenedores específicos
+
+export function createRouteTestContainer() {
+  return createTestContainer({ mockServices: true, mockMiddleware: true });
+}
+
+export function createServiceTestContainer() {
+  return createTestContainer({ mockRepositories: true });
+}
+
+export function createRepositoryTestContainer() {
+  return createTestContainer();
 }

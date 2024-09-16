@@ -1,21 +1,24 @@
+import { CategoryHierarchyService } from '../../../src/services/categoryHierarchyService';
 import { CategoryService } from '../../../src/services/categoryService';
 import { ExpenseService } from '../../../src/services/expenseService';
 import { NotificationService } from '../../../src/services/external/notificationService';
+import { OpenAIService } from '../../../src/services/external/openaiService';
+import { TempFileHandler } from '../../../src/services/fileProcessors/TempFileHandler';
 import { HouseholdService } from '../../../src/services/householdService';
 import { SubcategoryService } from '../../../src/services/subcategoryService';
 import { UserService } from '../../../src/services/userService';
 
 type MockedClassMethods<T> = {
-  [K in keyof T]: T[K] extends Function ? jest.Mock : T[K];
+  [K in keyof T]: T[K] extends (...args: never[]) => unknown ? jest.Mock : T[K];
 };
 
 export const mockUserService: MockedClassMethods<UserService> = {
-  getUserByAuthProviderId: jest.fn(),
-  updateUser: jest.fn(),
-  deleteUser: jest.fn(),
   createUser: jest.fn(),
+  updateUser: jest.fn(),
   createUserWithHousehold: jest.fn(),
   getUserById: jest.fn(),
+  getUserByAuthProviderId: jest.fn(),
+  deleteUser: jest.fn(),
 };
 
 export const mockHouseholdService: MockedClassMethods<HouseholdService> = {
@@ -33,6 +36,7 @@ export const mockHouseholdService: MockedClassMethods<HouseholdService> = {
 };
 
 export const mockCategoryService: MockedClassMethods<CategoryService> = {
+  getCategoryById: jest.fn(),
   getAllCategories: jest.fn(),
   createCategory: jest.fn(),
   updateCategory: jest.fn(),
@@ -41,6 +45,8 @@ export const mockCategoryService: MockedClassMethods<CategoryService> = {
 };
 
 export const mockSubcategoryService: MockedClassMethods<SubcategoryService> = {
+  getSubcategoryById: jest.fn(),
+  getSubcategoriesByCategoryId: jest.fn(),
   getAllSubcategories: jest.fn(),
   createSubcategory: jest.fn(),
   updateSubcategory: jest.fn(),
@@ -57,4 +63,19 @@ export const mockExpenseService: MockedClassMethods<ExpenseService> = {
 export const mockNotificationService: MockedClassMethods<NotificationService> = {
   sendPushNotification: jest.fn(),
   notifyHouseholdMembers: jest.fn(),
+};
+
+export const mockOpenAIService: MockedClassMethods<OpenAIService> = {
+  processReceipt: jest.fn(),
+  transcribeAudio: jest.fn(),
+  analyzeTranscription: jest.fn(),
+};
+
+export const mockTempFileHandler: Partial<jest.Mocked<TempFileHandler>> = {
+  createTempFile: jest.fn(),
+  deleteTempFiles: jest.fn(),
+};
+
+export const mockCategoryHierarchyService: Partial<jest.Mocked<CategoryHierarchyService>> = {
+  getCategoriesAndSubcategories: jest.fn(),
 };

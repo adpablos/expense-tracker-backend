@@ -1,146 +1,225 @@
-import { Pool, PoolClient } from 'pg';
-import { v4 as uuidv4 } from 'uuid';
-
+import 'reflect-metadata';
 import { Household } from '../../../src/models/Household';
+import { HouseholdMember } from '../../../src/models/HouseholdMember';
 import { User } from '../../../src/models/User';
-import { HouseholdService } from '../../../src/services/householdService';
+import { HouseholdRepository } from '../../../src/repositories/householdRepository';
+import { UserRepository } from '../../../src/repositories/userRepository';
 import { UserService } from '../../../src/services/userService';
-import { AppError } from '../../../src/utils/AppError';
+import { UserHouseholdTransactionCoordinator } from '../../../src/transaction-coordinators/userHouseholdTransactionCoordinator';
 
-jest.mock('pg');
+jest.mock('../../../src/repositories/userRepository');
+jest.mock('../../../src/repositories/householdRepository');
 jest.mock('../../../src/config/logger');
-jest.mock('../../../src/services/householdService');
-jest.mock('../../../src/config/openaiConfig', () => ({
-  __esModule: true,
-  default: {
-    chat: {
-      completions: {
-        create: jest.fn().mockResolvedValue({
-          choices: [{ message: { content: 'Mocked response' } }],
-        }),
-      },
-    },
-    audio: {
-      transcriptions: {
-        create: jest.fn().mockResolvedValue({ text: 'Mocked transcription' }),
-      },
-    },
-  },
-}));
 
 describe('UserService', () => {
   let userService: UserService;
-  let mockPool: jest.Mocked<Pool>;
-  let mockClient: jest.Mocked<PoolClient>;
-  let mockHouseholdService: jest.Mocked<HouseholdService>;
+  let mockUserRepository: jest.Mocked<UserRepository>;
+  let mockHouseholdRepository: jest.Mocked<HouseholdRepository>;
+  let mockUserHouseholdCoordinator: jest.Mocked<UserHouseholdTransactionCoordinator>;
 
   beforeEach(() => {
-    mockClient = {
-      query: jest.fn(),
-      release: jest.fn(),
-    } as unknown as jest.Mocked<PoolClient>;
+    mockUserRepository = {
+      createUser: jest.fn(),
+      updateUser: jest.fn(),
+      getUserById: jest.fn(),
+      getUserByAuthProviderId: jest.fn(),
+      deleteUser: jest.fn(),
+      removeUserFromAllHouseholds: jest.fn(),
+    } as unknown as jest.Mocked<UserRepository>;
 
-    mockPool = {
-      connect: jest.fn().mockResolvedValue(mockClient),
-      query: jest.fn(),
-    } as unknown as jest.Mocked<Pool>;
+    mockHouseholdRepository = {
+      create: jest.fn(),
+      addMember: jest.fn(),
+      getUserHouseholds: jest.fn(),
+      getMembers: jest.fn(),
+      deleteOrphanedHousehold: jest.fn(),
+      transferHouseholdOwnership: jest.fn(),
+    } as unknown as jest.Mocked<HouseholdRepository>;
 
-    mockHouseholdService = {
-      createHousehold: jest.fn(),
-    } as unknown as jest.Mocked<HouseholdService>;
+    mockUserHouseholdCoordinator = {
+      createUserWithHousehold: jest.fn(),
+    } as unknown as jest.Mocked<UserHouseholdTransactionCoordinator>;
 
-    userService = new UserService(mockPool);
-    (userService as any).householdService = mockHouseholdService;
+    userService = new UserService(
+      mockUserRepository,
+      mockHouseholdRepository,
+      mockUserHouseholdCoordinator
+    );
   });
 
   describe('createUser', () => {
-    it('should create a new user', async () => {
-      const newUser = new User('test@example.com', 'Test User', 'auth0|123456');
-      const mockDbResult = { ...newUser.toDatabase(), id: uuidv4() };
+    it('should create a new user successfully', async () => {
+      const user = new User('test@example.com', 'Test User', 'auth123');
+      const createdUser = new User('test@example.com', 'Test User', 'auth123', 'new-user-id');
 
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockDbResult] });
+      mockUserRepository.createUser.mockResolvedValue(createdUser);
 
-      const result = await userService.createUser(newUser);
+      const result = await userService.createUser(user);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringMatching(/INSERT INTO users .+ VALUES .+ RETURNING \*/),
-        expect.arrayContaining([newUser.id, newUser.email, newUser.name, newUser.authProviderId])
-      );
-      expect(result).toBeInstanceOf(User);
-      expect(result.email).toBe(newUser.email);
+      expect(result).toEqual(createdUser);
+      expect(mockUserRepository.createUser).toHaveBeenCalledWith(user);
     });
 
-    it('should throw an error for duplicate user', async () => {
-      const newUser = new User('test@example.com', 'Test User', 'auth0|123456');
-      const error: any = new Error('Duplicate key value violates unique constraint');
-      error.code = '23505';
-      (mockPool.query as jest.Mock).mockRejectedValueOnce(error);
+    it('should throw an error if user creation fails', async () => {
+      const user = new User('test@example.com', 'Test User', 'auth123');
 
-      await expect(userService.createUser(newUser)).rejects.toThrow(AppError);
+      mockUserRepository.createUser.mockRejectedValue(new Error('Database error'));
+
+      await expect(userService.createUser(user)).rejects.toThrow('Error creating user');
+    });
+
+    it('should throw an error for invalid user data', async () => {
+      const invalidUser = new User('invalid-email', 'Test User', 'auth123');
+      jest.spyOn(invalidUser, 'validate').mockReturnValue(['Invalid email']);
+      await expect(userService.createUser(invalidUser)).rejects.toThrow(
+        'Invalid user: Invalid email'
+      );
     });
   });
 
   describe('updateUser', () => {
-    it('should update an existing user', async () => {
-      const userId = uuidv4();
-      const updates = { email: 'updated@example.com', name: 'Updated Name' };
-      const mockUpdatedUser = { ...updates, id: userId, auth_provider_id: 'auth0|123456' };
+    it('should update a user successfully', async () => {
+      const userId = 'user-id';
+      const updates = { name: 'Updated Name' };
+      const updatedUser = new User('test@example.com', 'Updated Name', 'auth123', userId);
 
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockUpdatedUser] });
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ household_id: uuidv4() }] });
+      mockUserRepository.updateUser.mockResolvedValue(updatedUser);
 
       const result = await userService.updateUser(userId, updates);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringMatching(/UPDATE users SET .+ WHERE id = .+ RETURNING \*/),
-        expect.arrayContaining([updates.email, updates.name, userId])
-      );
-      expect(result).toBeInstanceOf(User);
-      expect(result.email).toBe(updates.email);
-      expect(result.name).toBe(updates.name);
+      expect(result).toEqual(updatedUser);
+      expect(mockUserRepository.updateUser).toHaveBeenCalledWith(userId, updates);
     });
 
-    it('should throw an error when updating non-existent user', async () => {
-      const userId = uuidv4();
-      const updates = { email: 'updated@example.com', name: 'Updated Name' };
+    it('should throw an error if user update fails', async () => {
+      const userId = 'user-id';
+      const updates = { name: 'Updated Name' };
 
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+      mockUserRepository.updateUser.mockRejectedValue(new Error('Database error'));
 
-      await expect(userService.updateUser(userId, updates)).rejects.toThrow(AppError);
+      await expect(userService.updateUser(userId, updates)).rejects.toThrow('Error updating user');
+    });
+  });
+
+  describe('createUserWithHousehold', () => {
+    it('should create a user with a household successfully', async () => {
+      const user = new User('test@example.com', 'Test User', 'auth123');
+      const householdName = 'Test Household';
+      const createdUser = new User('test@example.com', 'Test User', 'auth123', 'new-user-id');
+      createdUser.households = ['new-household-id'];
+      const createdHousehold = new Household(householdName, 'new-household-id');
+
+      mockUserHouseholdCoordinator.createUserWithHousehold.mockResolvedValue({
+        user: createdUser,
+        household: createdHousehold,
+      });
+
+      const result = await userService.createUserWithHousehold(user, householdName);
+
+      expect(result).toEqual({
+        user: expect.objectContaining({
+          id: 'new-user-id',
+          email: 'test@example.com',
+          name: 'Test User',
+          authProviderId: 'auth123',
+          households: ['new-household-id'],
+        }),
+        household: expect.objectContaining({
+          id: 'new-household-id',
+          name: 'Test Household',
+        }),
+      });
+      expect(mockUserHouseholdCoordinator.createUserWithHousehold).toHaveBeenCalledWith(
+        user,
+        householdName
+      );
+    });
+
+    it('should throw an error if user creation with household fails', async () => {
+      const user = new User('test@example.com', 'Test User', 'auth123');
+      const householdName = 'Test Household';
+
+      mockUserHouseholdCoordinator.createUserWithHousehold.mockRejectedValue(
+        new Error('Database error')
+      );
+
+      await expect(userService.createUserWithHousehold(user, householdName)).rejects.toThrow(
+        'Error creating user with household'
+      );
+    });
+
+    it('should throw an error for invalid user data', async () => {
+      const invalidUser = new User('invalid-email', 'Test User', 'auth123');
+      jest.spyOn(invalidUser, 'validate').mockReturnValue(['Invalid email']);
+      await expect(
+        userService.createUserWithHousehold(invalidUser, 'Test Household')
+      ).rejects.toThrow('Invalid user: Invalid email');
+    });
+
+    it('should throw an error if user already exists', async () => {
+      const existingUser = new User(
+        'existing@example.com',
+        'Existing User',
+        'auth123',
+        'existing-id'
+      );
+      mockUserRepository.getUserByAuthProviderId.mockResolvedValue(existingUser);
+
+      const newUser = new User('existing@example.com', 'Existing User', 'auth123');
+      await expect(userService.createUserWithHousehold(newUser, 'New Household')).rejects.toThrow(
+        'User already exists'
+      );
+    });
+
+    it('should throw an error if transaction coordinator fails', async () => {
+      const user = new User('test@example.com', 'Test User', 'auth123');
+      const householdName = 'Test Household';
+
+      mockUserHouseholdCoordinator.createUserWithHousehold.mockRejectedValue(
+        new Error('Transaction failed')
+      );
+
+      await expect(userService.createUserWithHousehold(user, householdName)).rejects.toThrow(
+        'Error creating user with household'
+      );
+    });
+  });
+
+  describe('getUserById', () => {
+    it('should return a user when it exists', async () => {
+      const userId = 'user-id';
+      const mockUser = new User('test@example.com', 'Test User', 'auth123', userId);
+      mockUserRepository.getUserById.mockResolvedValue(mockUser);
+
+      const result = await userService.getUserById(userId);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should return null when the user does not exist', async () => {
+      const userId = 'non-existent-id';
+      mockUserRepository.getUserById.mockResolvedValue(null);
+
+      const result = await userService.getUserById(userId);
+
+      expect(result).toBeNull();
     });
   });
 
   describe('getUserByAuthProviderId', () => {
-    it('should retrieve a user by auth provider ID', async () => {
-      const authProviderId = 'auth0|123456';
-      const mockUser = {
-        id: uuidv4(),
-        email: 'test@example.com',
-        name: 'Test User',
-        auth_provider_id: authProviderId,
-        households: [uuidv4()],
-      };
-
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockUser] });
+    it('should return a user when it exists', async () => {
+      const authProviderId = 'auth123';
+      const mockUser = new User('test@example.com', 'Test User', authProviderId, 'user-id');
+      mockUserRepository.getUserByAuthProviderId.mockResolvedValue(mockUser);
 
       const result = await userService.getUserByAuthProviderId(authProviderId);
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        `SELECT u.*, array_agg(hm.household_id) as households
-                 FROM users u
-                 LEFT JOIN household_members hm ON u.id = hm.user_id
-                 WHERE u.auth_provider_id = $1
-                 GROUP BY u.id`,
-        [authProviderId]
-      );
-      expect(result).toBeInstanceOf(User);
-      expect(result?.authProviderId).toBe(authProviderId);
+      expect(result).toEqual(mockUser);
     });
 
-    it('should return null for non-existent auth provider ID', async () => {
-      const authProviderId = 'auth0|nonexistent';
-
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
+    it('should return null when the user does not exist', async () => {
+      const authProviderId = 'non-existent-auth';
+      mockUserRepository.getUserByAuthProviderId.mockResolvedValue(null);
 
       const result = await userService.getUserByAuthProviderId(authProviderId);
 
@@ -150,90 +229,116 @@ describe('UserService', () => {
 
   describe('deleteUser', () => {
     it('should delete a user and handle their households', async () => {
-      const userId = uuidv4();
-      const mockUserHouseholds = [
-        { household_id: uuidv4(), role: 'owner', household_name: 'House 1', member_count: '2' },
-        { household_id: uuidv4(), role: 'member', household_name: 'House 2', member_count: '3' },
+      const userId = 'user-id';
+      const mockHouseholds = [
+        new Household('Household 1', 'household-1'),
+        new Household('Household 2', 'household-2'),
       ];
 
-      (mockClient.query as jest.Mock).mockResolvedValueOnce({ rows: mockUserHouseholds });
-      (mockClient.query as jest.Mock).mockResolvedValueOnce({ rows: [{ user_id: uuidv4() }] }); // For transferring ownership
-      (mockClient.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 }); // For updating household member role
-      (mockClient.query as jest.Mock).mockResolvedValueOnce({ rowCount: 2 }); // For removing user from households
-      (mockClient.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 }); // For deleting user
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue(mockHouseholds);
+      mockHouseholdRepository.getMembers.mockResolvedValue([
+        new HouseholdMember(
+          'household-id',
+          userId,
+          'owner',
+          'active',
+          'member-id',
+          new Date(),
+          new Date()
+        ),
+        new HouseholdMember(
+          'household-id',
+          'other-user',
+          'member',
+          'active',
+          'other-member-id',
+          new Date(),
+          new Date()
+        ),
+      ]);
+      mockHouseholdRepository.transferHouseholdOwnership.mockResolvedValue();
+      mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
+      mockUserRepository.deleteUser.mockResolvedValue();
 
       await userService.deleteUser(userId);
 
-      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-      expect(mockClient.release).toHaveBeenCalled();
+      expect(mockHouseholdRepository.getUserHouseholds).toHaveBeenCalledWith(userId);
+      expect(mockHouseholdRepository.getMembers).toHaveBeenCalledTimes(2);
+      expect(mockHouseholdRepository.transferHouseholdOwnership).toHaveBeenCalledTimes(2);
+      expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
+      expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
     });
 
-    it('should throw an error and rollback if deletion fails', async () => {
-      const userId = uuidv4();
+    it('should throw an error if user deletion fails', async () => {
+      const userId = 'user-id';
 
-      (mockClient.query as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue([]);
+      mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
+      mockUserRepository.deleteUser.mockRejectedValue(new Error('Database error'));
 
-      await expect(userService.deleteUser(userId)).rejects.toThrow(AppError);
-
-      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-      expect(mockClient.release).toHaveBeenCalled();
-    });
-  });
-
-  describe('createUserWithHousehold', () => {
-    it('should create a user with a new household', async () => {
-      const newUser = new User('test@example.com', 'Test User', 'auth0|123456');
-      const householdName = 'Test Household';
-      const mockDbResult = {
-        id: uuidv4(),
-        email: newUser.email,
-        name: newUser.name,
-        auth_provider_id: newUser.authProviderId,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      const mockHouseholdResult = new Household(householdName, uuidv4(), new Date(), new Date());
-
-      (mockClient.query as jest.Mock).mockImplementation((sql, params) => {
-        if (sql.includes('INSERT INTO users')) {
-          return Promise.resolve({ rows: [mockDbResult] });
-        }
-        return Promise.resolve({ rows: [] });
-      });
-
-      mockHouseholdService.createHousehold.mockResolvedValueOnce(mockHouseholdResult);
-
-      const result = await userService.createUserWithHousehold(newUser, householdName);
-
-      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-      expect(mockClient.query).toHaveBeenCalledWith(
-        'INSERT INTO users (id, email, name, auth_provider_id) VALUES ($1, $2, $3, $4) RETURNING *',
-        [expect.any(String), newUser.email, newUser.name, newUser.authProviderId]
-      );
-      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-      expect(result).toBeInstanceOf(User);
-      expect(result.id).toBeDefined();
-      expect(typeof result.id).toBe('string');
-      expect(result.email).toBe(newUser.email);
-      expect(result.name).toBe(newUser.name);
-      expect(result.authProviderId).toBe(newUser.authProviderId);
-      expect(result.households).toContain(mockHouseholdResult.id);
-      expect(mockHouseholdService.createHousehold).toHaveBeenCalled();
+      await expect(userService.deleteUser(userId)).rejects.toThrow('Error deleting user');
     });
 
-    it('should rollback transaction on error', async () => {
-      const newUser = new User('test@example.com', 'Test User', 'auth0|123456');
-      const householdName = 'Test Household';
+    it('should delete a user and their orphaned household', async () => {
+      const userId = 'user-id';
+      const mockHouseholds = [new Household('Orphaned Household', 'household-1')];
 
-      (mockClient.query as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue(mockHouseholds);
+      mockHouseholdRepository.getMembers.mockResolvedValue([
+        new HouseholdMember(
+          'household-1',
+          userId,
+          'owner',
+          'active',
+          'member-id',
+          new Date(),
+          new Date()
+        ),
+      ]);
+      mockHouseholdRepository.deleteOrphanedHousehold.mockResolvedValue();
+      mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
+      mockUserRepository.deleteUser.mockResolvedValue();
 
-      await expect(userService.createUserWithHousehold(newUser, householdName)).rejects.toThrow(
-        AppError
-      );
+      await userService.deleteUser(userId);
 
-      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-      expect(mockClient.release).toHaveBeenCalled();
+      expect(mockHouseholdRepository.deleteOrphanedHousehold).toHaveBeenCalledWith('household-1');
+      expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
+      expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
+    });
+
+    it('should delete a user who is not an owner of any household', async () => {
+      const userId = 'user-id';
+      const mockHouseholds = [new Household('Non-owned Household', 'household-1')];
+
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue(mockHouseholds);
+      mockHouseholdRepository.getMembers.mockResolvedValue([
+        new HouseholdMember(
+          'household-1',
+          'other-user',
+          'owner',
+          'active',
+          'other-member-id',
+          new Date(),
+          new Date()
+        ),
+        new HouseholdMember(
+          'household-1',
+          userId,
+          'member',
+          'active',
+          'member-id',
+          new Date(),
+          new Date()
+        ),
+      ]);
+      mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
+      mockUserRepository.deleteUser.mockResolvedValue();
+
+      await userService.deleteUser(userId);
+
+      expect(mockHouseholdRepository.transferHouseholdOwnership).not.toHaveBeenCalled();
+      expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
+      expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
     });
   });
 });

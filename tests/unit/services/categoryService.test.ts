@@ -1,153 +1,199 @@
-import { Pool } from 'pg';
-import { v4 as uuidv4 } from 'uuid';
-
+import 'reflect-metadata';
 import { Category } from '../../../src/models/Category';
+import { CategoryRepository } from '../../../src/repositories/categoryRepository';
 import { CategoryService } from '../../../src/services/categoryService';
 import { NotificationService } from '../../../src/services/external/notificationService';
 import { AppError } from '../../../src/utils/AppError';
 
-jest.mock('pg');
-jest.mock('../../../src/config/logger');
+jest.mock('../../../src/repositories/categoryRepository');
 jest.mock('../../../src/services/external/notificationService');
-jest.mock('../../../src/config/db', () => ({
-  __esModule: true,
-  default: {
-    query: jest.fn(),
-    connect: jest.fn().mockResolvedValue({
-      query: jest.fn(),
-      release: jest.fn(),
-    }),
-  },
-}));
+jest.mock('../../../src/config/logger');
 
 describe('CategoryService', () => {
   let categoryService: CategoryService;
-  let mockPool: jest.Mocked<Pool>;
+  let mockCategoryRepository: jest.Mocked<CategoryRepository>;
   let mockNotificationService: jest.Mocked<NotificationService>;
 
   beforeEach(() => {
-    mockPool = {
-      query: jest.fn(),
-    } as unknown as jest.Mocked<Pool>;
+    mockCategoryRepository = {
+      getAllCategories: jest.fn(),
+      createCategory: jest.fn(),
+      updateCategory: jest.fn(),
+      deleteCategory: jest.fn(),
+      deleteSubcategoriesByCategoryId: jest.fn(),
+      getCategoryById: jest.fn(),
+    } as unknown as jest.Mocked<CategoryRepository>;
+
     mockNotificationService = {
       notifyHouseholdMembers: jest.fn(),
     } as unknown as jest.Mocked<NotificationService>;
-    categoryService = new CategoryService(mockPool);
-    (categoryService as any).notificationService = mockNotificationService;
+
+    categoryService = new CategoryService(mockCategoryRepository, mockNotificationService);
   });
 
-  it('should get all categories for a household', async () => {
-    const householdId = uuidv4();
-    const mockCategories = [
-      { id: uuidv4(), name: 'Category 1', household_id: householdId },
-      { id: uuidv4(), name: 'Category 2', household_id: householdId },
-    ];
+  describe('getCategoryById', () => {
+    it('should return a category when found', async () => {
+      const categoryId = 'category-id';
+      const mockCategory = new Category('Test Category', 'household-id', categoryId);
 
-    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: mockCategories });
+      mockCategoryRepository.getCategoryById.mockResolvedValue(mockCategory);
 
-    const result = await categoryService.getAllCategories(householdId);
+      const result = await categoryService.getCategoryById(categoryId);
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      'SELECT * FROM categories WHERE household_id = $1',
-      [householdId]
-    );
-    expect(result).toHaveLength(2);
-    expect(result[0]).toBeInstanceOf(Category);
-    expect(result[1]).toBeInstanceOf(Category);
+      expect(result).toEqual(mockCategory);
+      expect(mockCategoryRepository.getCategoryById).toHaveBeenCalledWith(categoryId);
+    });
+
+    it('should throw an AppError when the category is not found', async () => {
+      mockCategoryRepository.getCategoryById.mockResolvedValue(null);
+
+      await expect(categoryService.getCategoryById('non-existent-id')).rejects.toThrow(AppError);
+    });
+
+    it('should handle errors when fetching a category', async () => {
+      mockCategoryRepository.getCategoryById.mockRejectedValue(new Error('Database error'));
+
+      await expect(categoryService.getCategoryById('category-id')).rejects.toThrow(AppError);
+    });
   });
 
-  it('should create a new category', async () => {
-    const newCategory = new Category('New Category', uuidv4());
-    const mockDbResult = { ...newCategory.toDatabase(), id: uuidv4() };
+  describe('getAllCategories', () => {
+    it('should get all categories for a household', async () => {
+      const householdId = 'household-id';
+      const mockCategories = [
+        new Category('Category 1', householdId),
+        new Category('Category 2', householdId),
+      ];
 
-    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockDbResult] });
+      mockCategoryRepository.getAllCategories.mockResolvedValue(mockCategories);
 
-    const result = await categoryService.createCategory(newCategory);
+      const result = await categoryService.getAllCategories(householdId);
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      'INSERT INTO categories (id, name, household_id) VALUES ($1, $2, $3) RETURNING *',
-      [newCategory.id, newCategory.name, newCategory.householdId]
-    );
-    expect(result).toBeInstanceOf(Category);
-    expect(result.name).toBe(newCategory.name);
-    expect(result.householdId).toBe(newCategory.householdId);
-    expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
-      newCategory.householdId,
-      expect.stringContaining('Nueva categoría creada:')
-    );
+      expect(result).toEqual(mockCategories);
+      expect(mockCategoryRepository.getAllCategories).toHaveBeenCalledWith(householdId);
+    });
+
+    it('should handle errors when fetching categories', async () => {
+      const householdId = 'household-id';
+      mockCategoryRepository.getAllCategories.mockRejectedValue(new Error('Database error'));
+
+      await expect(categoryService.getAllCategories(householdId)).rejects.toThrow(AppError);
+    });
   });
 
-  it('should update an existing category', async () => {
-    const categoryId = uuidv4();
-    const householdId = uuidv4();
-    const updatedName = 'Updated Category';
-    const mockUpdatedCategory = { id: categoryId, name: updatedName, household_id: householdId };
+  describe('createCategory', () => {
+    it('should create a new category', async () => {
+      const newCategory = new Category('New Category', 'household-id');
+      const createdCategory = new Category('New Category', 'household-id', 'new-category-id');
 
-    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockUpdatedCategory] });
+      mockCategoryRepository.createCategory.mockResolvedValue(createdCategory);
 
-    const result = await categoryService.updateCategory(categoryId, updatedName, householdId);
+      const result = await categoryService.createCategory(newCategory);
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      'UPDATE categories SET name = $1 WHERE id = $2 AND household_id = $3 RETURNING *',
-      [updatedName, categoryId, householdId]
-    );
-    expect(result).toBeInstanceOf(Category);
-    expect(result?.name).toBe(updatedName);
-    expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
-      householdId,
-      expect.stringContaining('Categoría actualizada:')
-    );
+      expect(result).toEqual(createdCategory);
+      expect(mockCategoryRepository.createCategory).toHaveBeenCalledWith(newCategory);
+      expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
+        'household-id',
+        expect.stringContaining('Nueva categoría creada:')
+      );
+    });
+
+    it('should throw an error for invalid category data', async () => {
+      const invalidCategory = new Category('', 'household-id');
+      await expect(categoryService.createCategory(invalidCategory)).rejects.toThrow(AppError);
+    });
   });
 
-  it('should delete a category', async () => {
-    const categoryId = uuidv4();
-    const householdId = uuidv4();
+  describe('updateCategory', () => {
+    it('should update an existing category', async () => {
+      const categoryId = 'category-id';
+      const householdId = 'household-id';
+      const updatedName = 'Updated Category';
+      const updatedCategory = new Category(updatedName, householdId, categoryId);
 
-    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
+      mockCategoryRepository.updateCategory.mockResolvedValue(updatedCategory);
 
-    await categoryService.deleteCategory(categoryId, householdId);
+      const result = await categoryService.updateCategory(categoryId, updatedName, householdId);
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      'DELETE FROM categories WHERE id = $1 AND household_id = $2',
-      [categoryId, householdId]
-    );
-    expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
-      householdId,
-      expect.stringContaining('Categoría eliminada:')
-    );
+      expect(result).toEqual(updatedCategory);
+      expect(mockCategoryRepository.updateCategory).toHaveBeenCalledWith(
+        categoryId,
+        updatedName,
+        householdId
+      );
+      expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
+        householdId,
+        expect.stringContaining('Categoría actualizada:')
+      );
+    });
+
+    it('should throw an error if category update fails', async () => {
+      const categoryId = 'category-id';
+      const householdId = 'household-id';
+      const updatedName = 'Updated Category';
+
+      mockCategoryRepository.updateCategory.mockRejectedValue(new Error('Database error'));
+
+      await expect(
+        categoryService.updateCategory(categoryId, updatedName, householdId)
+      ).rejects.toThrow(AppError);
+    });
   });
 
-  it('should handle errors when deleting a category with subcategories', async () => {
-    const categoryId = uuidv4();
-    const householdId = uuidv4();
+  describe('deleteCategory', () => {
+    it('should delete a category', async () => {
+      const categoryId = 'category-id';
+      const householdId = 'household-id';
 
-    const error = new Error('violates foreign key constraint') as any;
-    error.code = '23503';
-    (mockPool.query as jest.Mock).mockRejectedValueOnce(error);
+      mockCategoryRepository.deleteCategory.mockResolvedValue();
 
-    await expect(categoryService.deleteCategory(categoryId, householdId)).rejects.toThrow(
-      'Cannot delete category with associated subcategories. Use force=true to force deletion.'
-    );
+      await categoryService.deleteCategory(categoryId, householdId);
+
+      expect(mockCategoryRepository.deleteCategory).toHaveBeenCalledWith(categoryId, householdId);
+      expect(mockNotificationService.notifyHouseholdMembers).toHaveBeenCalledWith(
+        householdId,
+        expect.stringContaining('Categoría eliminada:')
+      );
+    });
+
+    it('should handle errors when deleting a category', async () => {
+      const categoryId = 'category-id';
+      const householdId = 'household-id';
+
+      mockCategoryRepository.deleteCategory.mockRejectedValue(new Error('Database error'));
+
+      await expect(categoryService.deleteCategory(categoryId, householdId)).rejects.toThrow(
+        AppError
+      );
+    });
   });
 
-  it('should delete subcategories by category ID', async () => {
-    const categoryId = uuidv4();
-    const householdId = uuidv4();
+  describe('deleteSubcategoriesByCategoryId', () => {
+    it('should delete subcategories by category ID', async () => {
+      const categoryId = 'category-id';
+      const householdId = 'household-id';
 
-    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 2 });
+      mockCategoryRepository.deleteSubcategoriesByCategoryId.mockResolvedValue();
 
-    await categoryService.deleteSubcategoriesByCategoryId(categoryId, householdId);
+      await categoryService.deleteSubcategoriesByCategoryId(categoryId, householdId);
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      'DELETE FROM subcategories WHERE category_id = $1 AND household_id = $2',
-      [categoryId, householdId]
-    );
-  });
+      expect(mockCategoryRepository.deleteSubcategoriesByCategoryId).toHaveBeenCalledWith(
+        categoryId,
+        householdId
+      );
+    });
 
-  it('should handle database errors', async () => {
-    const householdId = uuidv4();
-    (mockPool.query as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+    it('should handle errors when deleting subcategories', async () => {
+      const categoryId = 'category-id';
+      const householdId = 'household-id';
 
-    await expect(categoryService.getAllCategories(householdId)).rejects.toThrow(AppError);
+      mockCategoryRepository.deleteSubcategoriesByCategoryId.mockRejectedValue(
+        new Error('Database error')
+      );
+
+      await expect(
+        categoryService.deleteSubcategoriesByCategoryId(categoryId, householdId)
+      ).rejects.toThrow(AppError);
+    });
   });
 });

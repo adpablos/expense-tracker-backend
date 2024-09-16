@@ -1,10 +1,12 @@
 import { Container } from 'inversify';
-import { DI_TYPES } from '../src/types/di';
-import { HouseholdService } from '../src/services/householdService';
-import { UserService } from '../src/services/userService';
-import { NotificationService } from '../src/services/external/notificationService';
+
 import { CategoryService } from '../src/services/categoryService';
+import { NotificationService } from '../src/services/external/notificationService';
+import { HouseholdService } from '../src/services/householdService';
 import { SubcategoryService } from '../src/services/subcategoryService';
+import { UserService } from '../src/services/userService';
+import { DI_TYPES } from '../src/types/di';
+
 import {
   mockCategoryService,
   mockHouseholdService,

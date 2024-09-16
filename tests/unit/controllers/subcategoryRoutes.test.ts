@@ -1,43 +1,45 @@
 import 'reflect-metadata';
+import express from 'express';
+import { Container } from 'inversify';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 
-import { createApp } from '../../../../src/app';
-import { DI_TYPES } from '../../../../src/types/di';
-import { AppError } from '../../../../src/utils/AppError';
-import { createTestContainer } from '../../../testContainer';
-import { mockSubcategoryService, mockHouseholdService } from '../../mocks/serviceMocks';
-import { mockUserId, mockHouseholdId } from '../../testUtils';
+import { SubcategoryController } from '../../../src/controllers/subcategoryController';
+import { errorHandler } from '../../../src/middleware/errorHandler';
+import subcategoryRoutes from '../../../src/routes/subcategoryRoutes';
+import { DI_TYPES } from '../../../src/types/di';
+import { AppError } from '../../../src/utils/AppError';
+import { createMockAuthMiddleware, createMockHouseholdMiddleware } from '../mocks/middlewareMocks';
+import { mockSubcategoryService, mockHouseholdService } from '../mocks/serviceMocks';
 
-jest.mock('pg', () => require('../../mocks/pg'));
+const mockHouseholdId = uuidv4();
+const mockUserId = uuidv4();
 
-jest.mock('../../../../src/middleware/authMiddleware', () => ({
-  authMiddleware: jest.fn((req, res, next) => next()),
-  attachUser: jest.fn((req, res, next) => {
-    req.user = {
-      id: mockUserId,
-      email: 'test@example.com',
-      name: 'Test User',
-      authProviderId: 'auth0|123456',
-    };
-    req.currentHouseholdId = mockHouseholdId;
-    next();
-  }),
-}));
+// Mock middlewares
+const mockAuthMiddleware = createMockAuthMiddleware(mockUserId);
+const mockHouseholdMiddleware = createMockHouseholdMiddleware(mockHouseholdService);
 
-const testContainer = createTestContainer();
-testContainer.rebind(DI_TYPES.SubcategoryService).toConstantValue(mockSubcategoryService);
-testContainer.rebind(DI_TYPES.HouseholdService).toConstantValue(mockHouseholdService);
-const app = createApp(testContainer);
+const container = new Container();
+container.bind(DI_TYPES.SubcategoryService).toConstantValue(mockSubcategoryService);
+container.bind(DI_TYPES.HouseholdService).toConstantValue(mockHouseholdService);
+container.bind(DI_TYPES.AuthMiddleware).toConstantValue(mockAuthMiddleware);
+container.bind(DI_TYPES.HouseholdMiddleware).toConstantValue(mockHouseholdMiddleware);
+container.bind(DI_TYPES.SubcategoryController).to(SubcategoryController);
+
+const app = express();
+app.use(express.json());
+app.use('/api/subcategories', subcategoryRoutes(container));
+app.use(errorHandler);
 
 describe('Subcategory Routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockReset();
   });
 
   describe('GET /api/subcategories', () => {
     it('should return 403 when user does not have access to the specified household', async () => {
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(false);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(false);
 
       const response = await request(app)
         .get('/api/subcategories')
@@ -57,10 +59,8 @@ describe('Subcategory Routes', () => {
         { id: uuidv4(), name: 'Subcategory 2', categoryId: uuidv4(), householdId: mockHouseholdId },
       ];
 
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(true);
-      (mockSubcategoryService.getAllSubcategories as jest.Mock).mockResolvedValueOnce(
-        mockSubcategories
-      );
+      mockHouseholdService.userHasAccessToHousehold.mockReturnValue(true);
+      mockSubcategoryService.getAllSubcategories.mockResolvedValue(mockSubcategories);
 
       const response = await request(app)
         .get('/api/subcategories')
@@ -77,10 +77,8 @@ describe('Subcategory Routes', () => {
       const newSubcategory = { name: 'New Subcategory', categoryId: uuidv4() };
       const createdSubcategory = { id: uuidv4(), ...newSubcategory, householdId: mockHouseholdId };
 
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(true);
-      (mockSubcategoryService.createSubcategory as jest.Mock).mockResolvedValueOnce(
-        createdSubcategory
-      );
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(true);
+      mockSubcategoryService.createSubcategory.mockResolvedValue(createdSubcategory);
 
       const response = await request(app)
         .post('/api/subcategories')
@@ -93,7 +91,7 @@ describe('Subcategory Routes', () => {
     });
 
     it('should return 403 when user does not have access to the household', async () => {
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(false);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(false);
 
       const response = await request(app)
         .post('/api/subcategories')
@@ -123,10 +121,8 @@ describe('Subcategory Routes', () => {
         householdId: mockHouseholdId,
       };
 
-      (mockSubcategoryService.updateSubcategory as jest.Mock).mockResolvedValueOnce(
-        mockUpdatedSubcategory
-      );
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(true);
+      mockSubcategoryService.updateSubcategory.mockResolvedValue(mockUpdatedSubcategory);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(true);
 
       const response = await request(app)
         .put(`/api/subcategories/${subcategoryId}`)
@@ -145,10 +141,10 @@ describe('Subcategory Routes', () => {
         categoryId: uuidv4(),
       };
 
-      (mockSubcategoryService.updateSubcategory as jest.Mock).mockRejectedValueOnce(
+      mockSubcategoryService.updateSubcategory.mockRejectedValue(
         new AppError('Subcategory not found', 404)
       );
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(true);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(true);
 
       const response = await request(app)
         .put(`/api/subcategories/${nonExistentSubcategoryId}`)
@@ -165,7 +161,7 @@ describe('Subcategory Routes', () => {
 
     it('should return 403 when user does not have access to the household', async () => {
       const subcategoryId = uuidv4();
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(false);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(false);
 
       const response = await request(app)
         .put(`/api/subcategories/${subcategoryId}`)
@@ -185,8 +181,8 @@ describe('Subcategory Routes', () => {
     it('should delete an existing subcategory', async () => {
       const subcategoryId = uuidv4();
 
-      (mockSubcategoryService.deleteSubcategory as jest.Mock).mockResolvedValueOnce(1);
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(true);
+      mockSubcategoryService.deleteSubcategory.mockResolvedValue(1);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(true);
 
       const response = await request(app)
         .delete(`/api/subcategories/${subcategoryId}`)
@@ -199,10 +195,10 @@ describe('Subcategory Routes', () => {
     it('should return 404 when subcategory is not found', async () => {
       const nonExistentSubcategoryId = uuidv4();
 
-      (mockSubcategoryService.deleteSubcategory as jest.Mock).mockRejectedValueOnce(
+      mockSubcategoryService.deleteSubcategory.mockRejectedValue(
         new AppError('Subcategory not found', 404)
       );
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(true);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(true);
 
       const response = await request(app)
         .delete(`/api/subcategories/${nonExistentSubcategoryId}`)
@@ -218,7 +214,7 @@ describe('Subcategory Routes', () => {
 
     it('should return 403 when user does not have access to the household', async () => {
       const subcategoryId = uuidv4();
-      (mockHouseholdService.userHasAccessToHousehold as jest.Mock).mockResolvedValueOnce(false);
+      mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(false);
 
       const response = await request(app)
         .delete(`/api/subcategories/${subcategoryId}`)
