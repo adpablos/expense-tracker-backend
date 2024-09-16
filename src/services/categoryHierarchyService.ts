@@ -1,46 +1,26 @@
-import { Pool } from 'pg';
+import { injectable, inject } from 'inversify';
 
 import logger from '../config/logger';
+import { Category } from '../models/Category';
+import { Subcategory } from '../models/Subcategory';
+import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
 import { CategoryService } from './categoryService';
 import { SubcategoryService } from './subcategoryService';
 
+@injectable()
 export class CategoryHierarchyService {
-  private db: Pool;
-  private categoryService: CategoryService;
-  private subcategoryService: SubcategoryService;
-
-  constructor(db: Pool) {
-    this.db = db;
-    this.categoryService = new CategoryService(db);
-    this.subcategoryService = new SubcategoryService(db);
-  }
+  constructor(
+    @inject(DI_TYPES.CategoryService) private categoryService: CategoryService,
+    @inject(DI_TYPES.SubcategoryService) private subcategoryService: SubcategoryService
+  ) {}
 
   async getCategoriesAndSubcategories(householdId: string): Promise<string> {
     logger.info('Fetching categories and subcategories', { householdId });
     try {
-      const categories = await this.categoryService.getAllCategories(householdId);
-      logger.info('Fetched categories', { count: categories.length, householdId });
-
-      const subcategories = await this.subcategoryService.getAllSubcategories(householdId);
-      logger.info('Fetched subcategories', { count: subcategories.length, householdId });
-
-      const categoriesMap: { [key: string]: string[] } = {};
-
-      categories.forEach((category) => {
-        categoriesMap[category.name] = subcategories
-          .filter((subcategory) => subcategory.categoryId === category.id)
-          .map((subcategory) => subcategory.name);
-      });
-
-      let categoriesString = '';
-      for (const [category, subs] of Object.entries(categoriesMap)) {
-        categoriesString += `- ${category}: ${subs.join(', ')} \n`;
-      }
-
-      logger.info('Formatted categories and subcategories string', { householdId });
-      return categoriesString;
+      const hierarchy = await this.getCategoryHierarchy(householdId);
+      return this.formatHierarchyToString(hierarchy);
     } catch (error) {
       logger.error('Error fetching categories and subcategories', { error, householdId });
       throw new AppError('Error fetching categories and subcategories', 500);
@@ -53,13 +33,7 @@ export class CategoryHierarchyService {
       const categories = await this.categoryService.getAllCategories(householdId);
       const subcategories = await this.subcategoryService.getAllSubcategories(householdId);
 
-      const hierarchy: { [key: string]: string[] } = {};
-
-      categories.forEach((category) => {
-        hierarchy[category.name] = subcategories
-          .filter((subcategory) => subcategory.categoryId === category.id)
-          .map((subcategory) => subcategory.name);
-      });
+      const hierarchy = this.buildHierarchy(categories, subcategories);
 
       logger.info('Fetched category hierarchy', {
         householdId,
@@ -70,5 +44,51 @@ export class CategoryHierarchyService {
       logger.error('Error fetching category hierarchy', { error, householdId });
       throw new AppError('Error fetching category hierarchy', 500);
     }
+  }
+
+  async getCategoryWithSubcategories(
+    householdId: string,
+    categoryId: string
+  ): Promise<{ category: Category; subcategories: Subcategory[] }> {
+    logger.info('Fetching category with subcategories', { householdId, categoryId });
+    try {
+      const category = await this.categoryService.getCategoryById(categoryId);
+      if (!category || category.householdId !== householdId) {
+        throw new AppError('Category not found', 404);
+      }
+      const subcategories = await this.subcategoryService.getSubcategoriesByCategoryId(
+        categoryId,
+        householdId
+      );
+      return { category, subcategories };
+    } catch (error) {
+      logger.error('Error fetching category with subcategories', {
+        error,
+        householdId,
+        categoryId,
+      });
+      throw error instanceof AppError
+        ? error
+        : new AppError('Error fetching category with subcategories', 500);
+    }
+  }
+
+  private buildHierarchy(
+    categories: Category[],
+    subcategories: Subcategory[]
+  ): { [key: string]: string[] } {
+    const hierarchy: { [key: string]: string[] } = {};
+    categories.forEach((category) => {
+      hierarchy[category.name] = subcategories
+        .filter((subcategory) => subcategory.categoryId === category.id)
+        .map((subcategory) => subcategory.name);
+    });
+    return hierarchy;
+  }
+
+  private formatHierarchyToString(hierarchy: { [key: string]: string[] }): string {
+    return Object.entries(hierarchy)
+      .map(([category, subs]) => `- ${category}: ${subs.join(', ')}`)
+      .join('\n');
   }
 }

@@ -1,32 +1,43 @@
-import { Pool } from 'pg';
+import { injectable, inject } from 'inversify';
 
 import logger from '../config/logger';
 import { Category } from '../models/Category';
-import { DatabaseError } from '../types/errors';
+import { CategoryRepository } from '../repositories/categoryRepository';
+import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
 import { NotificationService } from './external/notificationService';
 
+@injectable()
 export class CategoryService {
-  private db: Pool;
-  private notificationService: NotificationService;
+  constructor(
+    @inject(DI_TYPES.CategoryRepository) private categoryRepository: CategoryRepository,
+    @inject(DI_TYPES.NotificationService) private notificationService: NotificationService
+  ) {}
 
-  constructor(db: Pool) {
-    this.db = db;
-    this.notificationService = new NotificationService();
+  async getCategoryById(id: string): Promise<Category> {
+    logger.info('Fetching category by ID', { id });
+    try {
+      const category = await this.categoryRepository.getCategoryById(id);
+      if (!category) {
+        throw new AppError('Category not found', 404);
+      }
+      return category;
+    } catch (error) {
+      logger.error('Error fetching category by ID', { error, id });
+      if (error instanceof AppError) throw error;
+      throw new AppError('Error fetching category', 500);
+    }
   }
 
   async getAllCategories(householdId: string): Promise<Category[]> {
     logger.info('Fetching all categories for household', { householdId });
     try {
-      const result = await this.db.query('SELECT * FROM categories WHERE household_id = $1', [
-        householdId,
-      ]);
-      const categories = result.rows.map(Category.fromDatabase);
+      const categories = await this.categoryRepository.getAllCategories(householdId);
       logger.info('Fetched categories', { count: categories.length, householdId });
       return categories;
     } catch (error) {
-      logger.error('Error fetching categories', { error: error, householdId });
+      logger.error('Error fetching categories', { error, householdId });
       throw new AppError('Error fetching categories', 500);
     }
   }
@@ -44,12 +55,7 @@ export class CategoryService {
     }
 
     try {
-      const dbCategory = category.toDatabase();
-      const result = await this.db.query(
-        'INSERT INTO categories (id, name, household_id) VALUES ($1, $2, $3) RETURNING *',
-        [dbCategory.id, dbCategory.name, dbCategory.household_id]
-      );
-      const createdCategory = Category.fromDatabase(result.rows[0]);
+      const createdCategory = await this.categoryRepository.createCategory(category);
       logger.info('Created category', { category: createdCategory });
 
       await this.notificationService.notifyHouseholdMembers(
@@ -59,7 +65,7 @@ export class CategoryService {
 
       return createdCategory;
     } catch (error) {
-      logger.error('Error creating category', { error: error });
+      logger.error('Error creating category', { error });
       throw new AppError('Error creating category', 500);
     }
   }
@@ -67,15 +73,7 @@ export class CategoryService {
   async updateCategory(id: string, name: string, householdId: string): Promise<Category> {
     logger.info('Updating category', { id, name, householdId });
     try {
-      const result = await this.db.query(
-        'UPDATE categories SET name = $1 WHERE id = $2 AND household_id = $3 RETURNING *',
-        [name, id, householdId]
-      );
-      if (result.rows.length === 0) {
-        logger.warn('Category not found', { id, householdId });
-        throw new AppError('Category not found', 404);
-      }
-      const updatedCategory = Category.fromDatabase(result.rows[0]);
+      const updatedCategory = await this.categoryRepository.updateCategory(id, name, householdId);
       logger.info('Updated category', { category: updatedCategory });
 
       await this.notificationService.notifyHouseholdMembers(
@@ -85,7 +83,7 @@ export class CategoryService {
 
       return updatedCategory;
     } catch (error) {
-      logger.error('Error updating category', { error: error });
+      logger.error('Error updating category', { error });
       if (error instanceof AppError) throw error;
       throw new AppError('Error updating category', 500);
     }
@@ -94,31 +92,14 @@ export class CategoryService {
   async deleteCategory(id: string, householdId: string): Promise<void> {
     logger.info('Deleting category', { id, householdId });
     try {
-      const result = await this.db.query(
-        'DELETE FROM categories WHERE id = $1 AND household_id = $2',
-        [id, householdId]
-      );
-      if (result.rowCount === 0) {
-        logger.warn('Category not found', { id, householdId });
-        throw new AppError('Category not found', 404);
-      }
-      logger.info('Deleted category', { id, householdId, rowCount: result.rowCount });
+      await this.categoryRepository.deleteCategory(id, householdId);
+      logger.info('Deleted category', { id, householdId });
 
       await this.notificationService.notifyHouseholdMembers(
         householdId,
         `Categoría eliminada: ID ${id}`
       );
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        const dbError = error as DatabaseError;
-        if (dbError.code === '23503') {
-          logger.error('Cannot delete category due to existing subcategories: %s', dbError.detail);
-          throw new AppError(
-            'Cannot delete category with associated subcategories. Use force=true to force deletion.',
-            400
-          );
-        }
-      }
+    } catch (error) {
       logger.error('Error deleting category', { error });
       if (error instanceof AppError) throw error;
       throw new AppError('Error deleting category', 500);
@@ -128,10 +109,7 @@ export class CategoryService {
   async deleteSubcategoriesByCategoryId(categoryId: string, householdId: string): Promise<void> {
     logger.info('Deleting subcategories for categoryId: %s', categoryId);
     try {
-      await this.db.query(
-        'DELETE FROM subcategories WHERE category_id = $1 AND household_id = $2',
-        [categoryId, householdId]
-      );
+      await this.categoryRepository.deleteSubcategoriesByCategoryId(categoryId, householdId);
       logger.info('Deleted subcategories for categoryId: %s', categoryId);
     } catch (error) {
       logger.error('Error deleting subcategories for categoryId: %s, error: %s', categoryId, error);

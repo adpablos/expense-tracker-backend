@@ -1,23 +1,27 @@
-import pool from '../../config/db';
+import { injectable, inject } from 'inversify';
+
 import logger from '../../config/logger';
+import { DI_TYPES } from '../../types/di';
+import { AppError } from '../../utils/AppError';
 import { HouseholdService } from '../householdService';
 
+@injectable()
 export class NotificationService {
-  private householdService: HouseholdService;
+  constructor(@inject(DI_TYPES.HouseholdService) private householdService: HouseholdService) {}
 
-  constructor() {
-    this.householdService = new HouseholdService(pool);
-  }
-
-  async sendPushNotification(userId: string, message: string) {
+  async sendPushNotification(userId: string, message: string): Promise<void> {
     // TODO: Implementar envío de notificaciones push
     // Aquí implementarías la lógica para enviar notificaciones push
-    // Esto podría implicar el uso de un servicio de terceros como Firebase Cloud Messagingç
+    // Esto podría implicar el uso de un servicio de terceros como Firebase Cloud Messaging
     logger.info(`Sending push notification to user ${userId}: ${message}`);
     // Por ahora, solo registramos el intento de envío
   }
 
-  async notifyHouseholdMembers(householdId: string, message: string, excludeUserId?: string) {
+  async notifyHouseholdMembers(
+    householdId: string,
+    message: string,
+    excludeUserId?: string
+  ): Promise<void> {
     try {
       const members = await this.householdService.getHouseholdMembers(householdId);
       for (const member of members) {
@@ -27,6 +31,7 @@ export class NotificationService {
       }
     } catch (error) {
       logger.error('Error notifying household members', { error });
+      throw new AppError('Error notifying household members', 500);
     }
   }
 }

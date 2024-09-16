@@ -50,14 +50,16 @@ export class UserController {
 
       const newUser = new User(email, name, auth_provider_id);
       const householdName = `${name}'s Household`;
-      const newHousehold = new Household(householdName);
 
-      const createdHousehold = await this.householdService.createHousehold(newHousehold, newUser);
-      console.log('createdHousehold:', createdHousehold);
+      const result = await this.userService.createUserWithHousehold(newUser, householdName);
 
-      newUser.addHousehold(createdHousehold.id);
+      if (!result || !result.user || !result.household) {
+        throw new AppError('Error creating user with household', 500);
+      }
 
-      res.status(201).json({ user: newUser, household: createdHousehold });
+      const { user: createdUser, household: createdHousehold } = result;
+
+      res.status(201).json({ user: createdUser, household: createdHousehold });
     } catch (error) {
       next(error);
     }

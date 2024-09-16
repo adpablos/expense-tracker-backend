@@ -1,29 +1,21 @@
-import fs from 'fs';
-import path from 'path';
-import { promisify } from 'util';
-
 import { NextFunction, Response } from 'express';
-import ffmpeg from 'fluent-ffmpeg';
 import { inject, injectable } from 'inversify';
 
-import logger from '../config/logger';
 import { Expense } from '../models/Expense';
 import { ExpenseService } from '../services/expenseService';
-import {
-  analyzeTranscription,
-  processReceipt,
-  transcribeAudio,
-} from '../services/external/openaiService';
+import { OpenAIService } from '../services/external/openaiService';
+import { FileProcessorFactory } from '../services/fileProcessors/FileProcessorFactory';
 import { DI_TYPES } from '../types/di';
 import { ExtendedRequest } from '../types/express';
 import { AppError } from '../utils/AppError';
-import { encodeImage } from '../utils/encodeImage';
-
-const ffprobe = promisify(ffmpeg.ffprobe);
 
 @injectable()
 export class ExpenseController {
-  constructor(@inject(DI_TYPES.ExpenseService) private expenseService: ExpenseService) {}
+  constructor(
+    @inject(DI_TYPES.ExpenseService) private expenseService: ExpenseService,
+    @inject(DI_TYPES.OpenAIService) private openAIService: OpenAIService,
+    @inject(DI_TYPES.FileProcessorFactory) private fileProcessorFactory: FileProcessorFactory
+  ) {}
 
   public getExpenses = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
@@ -114,8 +106,14 @@ export class ExpenseController {
     }
   };
 
+  /**
+   * Handles the upload and processing of files to create expenses using AI.
+   * @param req Extended request that includes user and household information.
+   * @param res Express response.
+   * @param next Express next function.
+   */
   public uploadExpense = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
-    if (!req.file || !req.file.path) {
+    if (!req.file) {
       return next(new AppError('No file uploaded', 400));
     }
 
@@ -124,51 +122,17 @@ export class ExpenseController {
       return next(new AppError('User does not belong to a household', 400));
     }
 
-    const filePath = req.file.path;
-    const fileExtension = path.extname(req.file.originalname);
-    const newFilePath = `${filePath}${fileExtension}`;
-    let wavFilePath: string | null = null;
-
     try {
-      fs.renameSync(filePath, newFilePath);
-
-      // Verify the file is a valid audio file
-      try {
-        await ffprobe(newFilePath);
-      } catch (error) {
-        logger.error('Invalid audio file:', error);
-        return res.status(400).send('Invalid audio file.');
+      const processor = this.fileProcessorFactory.getProcessor(req.file);
+      if (!processor) {
+        return next(new AppError('Unsupported file type', 400));
       }
 
-      let expenseDetails;
-      if (req.file.mimetype.startsWith('image')) {
-        const base64Image = encodeImage(newFilePath);
-        expenseDetails = await processReceipt(base64Image, householdId, req.user!.id);
-      } else if (req.file.mimetype.startsWith('audio')) {
-        // Convert to WAV format
-        wavFilePath = `${newFilePath}.wav`;
-        await new Promise<void>((resolve, reject) => {
-          ffmpeg(newFilePath)
-            .toFormat('wav')
-            .on('error', (err) => {
-              console.log('Error during audio conversion to WAV:', err);
-              reject(err);
-            })
-            .on('end', () => resolve())
-            .save(wavFilePath!);
-        });
-
-        const transcription = await transcribeAudio(wavFilePath);
-        expenseDetails = await analyzeTranscription(transcription, householdId, req.user!.id);
-      } else {
-        logger.error('Unsupported file type:', req.file.mimetype);
-        throw new AppError('Unsupported file type', 400);
-      }
+      const expenseDetails = await processor.process(req.file, req);
 
       if (expenseDetails) {
         res.status(200).json({ message: 'Expense logged successfully.', expense: expenseDetails });
       } else {
-        logger.error('No expense could be logged from the file');
         res.status(422).json({
           message: 'No expense logged.',
           details: 'The file was processed successfully, but no valid expense could be identified.',
@@ -176,18 +140,6 @@ export class ExpenseController {
       }
     } catch (error) {
       next(error);
-    } finally {
-      // Cleaning up temporary files
-      try {
-        if (fs.existsSync(newFilePath)) {
-          fs.unlinkSync(newFilePath);
-        }
-        if (wavFilePath && fs.existsSync(wavFilePath)) {
-          fs.unlinkSync(wavFilePath);
-        }
-      } catch (error) {
-        logger.error('Error cleaning up temporary files:', error);
-      }
     }
   };
 }

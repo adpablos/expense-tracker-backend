@@ -1,32 +1,28 @@
-import { Pool } from 'pg';
+import { injectable, inject } from 'inversify';
 
 import logger from '../config/logger';
 import { Subcategory } from '../models/Subcategory';
-import { DatabaseError } from '../types/errors';
+import { SubcategoryRepository } from '../repositories/subcategoryRepository';
+import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
 import { NotificationService } from './external/notificationService';
 
+@injectable()
 export class SubcategoryService {
-  private db: Pool;
-  private notificationService: NotificationService;
-
-  constructor(db: Pool) {
-    this.db = db;
-    this.notificationService = new NotificationService();
-  }
+  constructor(
+    @inject(DI_TYPES.SubcategoryRepository) private subcategoryRepository: SubcategoryRepository,
+    @inject(DI_TYPES.NotificationService) private notificationService: NotificationService
+  ) {}
 
   async getAllSubcategories(householdId: string): Promise<Subcategory[]> {
     logger.info('Fetching all subcategories for household', { householdId });
     try {
-      const result = await this.db.query('SELECT * FROM subcategories WHERE household_id = $1', [
-        householdId,
-      ]);
-      const subcategories = result.rows.map(Subcategory.fromDatabase);
+      const subcategories = await this.subcategoryRepository.getAllSubcategories(householdId);
       logger.info('Fetched subcategories', { count: subcategories.length, householdId });
       return subcategories;
     } catch (error) {
-      logger.error('Error fetching subcategories', { error: error, householdId });
+      logger.error('Error fetching subcategories', { error, householdId });
       throw new AppError('Error fetching subcategories', 500);
     }
   }
@@ -44,17 +40,7 @@ export class SubcategoryService {
     }
 
     try {
-      const dbSubcategory = subcategory.toDatabase();
-      const result = await this.db.query(
-        'INSERT INTO subcategories (id, name, category_id, household_id) VALUES ($1, $2, $3, $4) RETURNING *',
-        [
-          dbSubcategory.id,
-          dbSubcategory.name,
-          dbSubcategory.category_id,
-          dbSubcategory.household_id,
-        ]
-      );
-      const createdSubcategory = Subcategory.fromDatabase(result.rows[0]);
+      const createdSubcategory = await this.subcategoryRepository.createSubcategory(subcategory);
       logger.info('Created subcategory', { subcategory: createdSubcategory });
 
       await this.notificationService.notifyHouseholdMembers(
@@ -63,14 +49,9 @@ export class SubcategoryService {
       );
 
       return createdSubcategory;
-    } catch (error: unknown) {
+    } catch (error) {
       logger.error('Error creating subcategory', { error });
-      if (error instanceof Error) {
-        const dbError = error as DatabaseError;
-        if (dbError.code === '23503') {
-          throw new AppError('Parent category not found', 404);
-        }
-      }
+      if (error instanceof AppError) throw error;
       throw new AppError('Error creating subcategory', 500);
     }
   }
@@ -83,15 +64,12 @@ export class SubcategoryService {
   ): Promise<Subcategory> {
     logger.info('Updating subcategory', { id, name, categoryId, householdId });
     try {
-      const result = await this.db.query(
-        'UPDATE subcategories SET name = $1, category_id = $2 WHERE id = $3 AND household_id = $4 RETURNING *',
-        [name, categoryId, id, householdId]
+      const updatedSubcategory = await this.subcategoryRepository.updateSubcategory(
+        id,
+        name,
+        categoryId,
+        householdId
       );
-      if (result.rows.length === 0) {
-        logger.warn('Subcategory not found', { id, householdId });
-        throw new AppError('Subcategory not found', 404);
-      }
-      const updatedSubcategory = Subcategory.fromDatabase(result.rows[0]);
       logger.info('Updated subcategory', { subcategory: updatedSubcategory });
 
       await this.notificationService.notifyHouseholdMembers(
@@ -101,11 +79,8 @@ export class SubcategoryService {
 
       return updatedSubcategory;
     } catch (error) {
-      logger.error('Error updating subcategory', { error: error });
-      if (error instanceof AppError) {
-        throw error; // Re-lanzamos el AppError original
-      }
-      // Si no es un AppError, lanzamos un nuevo error genérico
+      logger.error('Error updating subcategory', { error });
+      if (error instanceof AppError) throw error;
       throw new AppError('Error updating subcategory', 500);
     }
   }
@@ -113,24 +88,59 @@ export class SubcategoryService {
   async deleteSubcategory(id: string, householdId: string): Promise<void> {
     logger.info('Deleting subcategory', { id, householdId });
     try {
-      const result = await this.db.query(
-        'DELETE FROM subcategories WHERE id = $1 AND household_id = $2',
-        [id, householdId]
-      );
-      if (result.rowCount === 0) {
-        logger.warn('Subcategory not found', { id, householdId });
-        throw new AppError('Subcategory not found', 404);
-      }
-      logger.info('Deleted subcategory', { id, householdId, rowCount: result.rowCount });
+      await this.subcategoryRepository.deleteSubcategory(id, householdId);
+      logger.info('Deleted subcategory', { id, householdId });
 
       await this.notificationService.notifyHouseholdMembers(
         householdId,
         `Subcategoría eliminada: ID ${id}`
       );
     } catch (error) {
-      logger.error('Error deleting subcategory', { error: error });
+      logger.error('Error deleting subcategory', { error });
       if (error instanceof AppError) throw error;
       throw new AppError('Error deleting subcategory', 500);
+    }
+  }
+
+  async getSubcategoryById(id: string, householdId: string): Promise<Subcategory | null> {
+    logger.info('Fetching subcategory by ID', { id, householdId });
+    try {
+      const subcategory = await this.subcategoryRepository.getSubcategoryById(id, householdId);
+      if (!subcategory) {
+        logger.warn('Subcategory not found', { id, householdId });
+        return null;
+      }
+      logger.info('Fetched subcategory', { id, householdId });
+      return subcategory;
+    } catch (error) {
+      logger.error('Error fetching subcategory by ID', { error, id, householdId });
+      throw new AppError('Error fetching subcategory', 500);
+    }
+  }
+
+  async getSubcategoriesByCategoryId(
+    categoryId: string,
+    householdId: string
+  ): Promise<Subcategory[]> {
+    logger.info('Fetching subcategories by category ID', { categoryId, householdId });
+    try {
+      const subcategories = await this.subcategoryRepository.getSubcategoriesByCategoryId(
+        categoryId,
+        householdId
+      );
+      logger.info('Fetched subcategories', {
+        count: subcategories.length,
+        categoryId,
+        householdId,
+      });
+      return subcategories;
+    } catch (error) {
+      logger.error('Error fetching subcategories by category ID', {
+        error,
+        categoryId,
+        householdId,
+      });
+      throw new AppError('Error fetching subcategories', 500);
     }
   }
 }

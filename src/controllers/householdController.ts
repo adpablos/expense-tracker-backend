@@ -26,12 +26,13 @@ export class HouseholdController {
         throw new AppError('User not authenticated', 401);
       }
 
-      const user = req.user as User;
+      const user = req.user instanceof User ? req.user : User.fromDatabase(req.user);
 
       const newHousehold = new Household(name);
       const createdHousehold = await this.householdService.createHousehold(newHousehold, user);
 
       user.addHousehold(createdHousehold.id);
+      await this.userService.updateUser(user.id, { households: user.households });
 
       res.status(201).json(createdHousehold);
     } catch (error) {
