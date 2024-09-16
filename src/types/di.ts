@@ -4,8 +4,17 @@ export const DI_TYPES = {
   SubcategoryService: Symbol.for('SubcategoryService'),
   ExpenseService: Symbol.for('ExpenseService'),
   HouseholdService: Symbol.for('HouseholdService'),
+  TransactionService: Symbol.for('TransactionService'),
   UserService: Symbol.for('UserService'),
   NotificationService: Symbol.for('NotificationService'),
+  CategoryHierarchyService: Symbol.for('CategoryHierarchyService'),
+  OpenAIService: Symbol.for('OpenAIService'),
+  FileProcessor: Symbol.for('FileProcessor'),
+  FileProcessorFactory: Symbol.for('FileProcessorFactory'),
+  ImageProcessor: Symbol.for('ImageProcessor'),
+  AudioProcessor: Symbol.for('AudioProcessor'),
+  AudioConverter: Symbol.for('AudioConverter'),
+  TempFileHandler: Symbol.for('TempFileHandler'),
   // Add other services here as needed
 
   // Controllers
@@ -15,4 +24,24 @@ export const DI_TYPES = {
   HouseholdController: Symbol.for('HouseholdController'),
   UserController: Symbol.for('UserController'),
   // Add other controllers here as needed
+
+  // Middleware
+  HouseholdMiddleware: Symbol.for('HouseholdMiddleware'),
+  AuthMiddleware: Symbol.for('AuthMiddleware'),
+  RequestLogger: Symbol.for('RequestLogger'),
+  ResponseLogger: Symbol.for('ResponseLogger'),
+  // Add other middleware here as needed
+
+  // Database
+  Pool: Symbol.for('Pool'),
+  HouseholdRepository: Symbol.for('HouseholdRepository'),
+  UserRepository: Symbol.for('UserRepository'),
+  CategoryRepository: Symbol.for('CategoryRepository'),
+  SubcategoryRepository: Symbol('SubcategoryRepository'),
+  ExpenseRepository: Symbol('ExpenseRepository'),
+  UserHouseholdTransactionCoordinator: Symbol('UserHouseholdTransactionCoordinator'),
+
+  // Other
+  Logger: Symbol.for('Logger'),
+  multer: Symbol.for('multer'),
 };

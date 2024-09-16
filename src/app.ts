@@ -11,6 +11,7 @@ import householdRoutes from './routes/householdRoutes';
 import subcategoryRoutes from './routes/subcategoryRoutes';
 import userRoutes from './routes/userRoutes';
 import setupSwagger from './swagger';
+import { DI_TYPES } from './types/di';
 import { AppError } from './utils/AppError';
 
 export interface AppRoutes {
@@ -42,6 +43,13 @@ export function createApp(container: Container): express.Application {
   };
 
   app.use(cors(corsOptions));
+
+  const requestLogger = container.get<express.RequestHandler>(DI_TYPES.RequestLogger);
+  const responseLogger = container.get<express.RequestHandler>(DI_TYPES.ResponseLogger);
+
+  app.use(requestLogger);
+  app.use(responseLogger);
+
   app.use(express.json());
 
   setupSwagger(app);
