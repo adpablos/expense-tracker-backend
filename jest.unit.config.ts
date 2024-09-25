@@ -1,12 +1,10 @@
-// jest.config.ts
-
 import type { Config } from '@jest/types';
 
 const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  testMatch: ['**/tests/**/*.test.(ts|js)', '**/tests/**/?(*.)+(spec|test).[tj]s?(x)'],
+  testMatch: ['**/tests/unit/**/*.test.(ts|js)', '**/tests/unit/?(*.)+(spec|test).[tj]s?(x)'],
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
@@ -17,11 +15,11 @@ const config: Config.InitialOptions = {
       },
     ],
   },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/unit/setup/jest.setup.ts'],
   moduleDirectories: ['node_modules', 'src'],
-  roots: ['<rootDir>/src', '<rootDir>/tests'],
-  coverageDirectory: 'coverage',
-  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts', '!src/index.ts', '!src/server.ts'],
+  roots: ['<rootDir>/src', '<rootDir>/tests/unit'],
+  coverageDirectory: 'coverage/unit',
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
   verbose: true,
   coverageThreshold: {
     global: {
