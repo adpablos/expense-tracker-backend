@@ -9,6 +9,7 @@ export interface ExtendedRequest extends Request {
   };
   user?: User;
   currentHouseholdId?: string;
+  startTime: number;
 }
 
 export type ExtendedRequestHandler = (

@@ -13,7 +13,7 @@ describe('ExpenseRepository', () => {
 
   beforeEach(() => {
     const container = createRepositoryTestContainer();
-    mockPool = container.get<Pool>(DI_TYPES.Pool) as jest.Mocked<Pool>;
+    mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     expenseRepository = container.get<ExpenseRepository>(DI_TYPES.ExpenseRepository);
     jest.clearAllMocks();
   });

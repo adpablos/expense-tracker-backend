@@ -13,7 +13,7 @@ describe('SubcategoryRepository', () => {
 
   beforeEach(() => {
     const container = createRepositoryTestContainer();
-    mockPool = container.get<Pool>(DI_TYPES.Pool) as jest.Mocked<Pool>;
+    mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     subcategoryRepository = container.get<SubcategoryRepository>(DI_TYPES.SubcategoryRepository);
   });
 

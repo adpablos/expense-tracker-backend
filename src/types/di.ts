@@ -33,7 +33,7 @@ export const DI_TYPES = {
   // Add other middleware here as needed
 
   // Database
-  Pool: Symbol.for('Pool'),
+  DbPool: Symbol.for('DbPool'),
   HouseholdRepository: Symbol.for('HouseholdRepository'),
   UserRepository: Symbol.for('UserRepository'),
   CategoryRepository: Symbol.for('CategoryRepository'),

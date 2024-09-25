@@ -22,7 +22,7 @@ type ExpenseQueryParam = string | number | Date;
 
 @injectable()
 export class ExpenseRepository {
-  constructor(@inject(DI_TYPES.Pool) private db: Pool & { connect: () => Promise<PoolClient> }) {}
+  constructor(@inject(DI_TYPES.DbPool) private db: Pool & { connect: () => Promise<PoolClient> }) {}
 
   async getExpenses(filters: ExpenseFilters): Promise<{ expenses: Expense[]; totalItems: number }> {
     logger.info('Fetching expenses', { filters });

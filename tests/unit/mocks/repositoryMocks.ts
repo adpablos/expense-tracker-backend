@@ -19,7 +19,7 @@ export const mockUserRepository: MockedClassMethods<UserRepository> = {
 
 export const mockHouseholdRepository: MockedClassMethods<HouseholdRepository> = {
   create: jest.fn(),
-  getById: jest.fn(),
+  getHouseholdById: jest.fn(),
   isMember: jest.fn(),
   addMember: jest.fn(),
   removeMember: jest.fn(),

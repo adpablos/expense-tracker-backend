@@ -1,7 +1,7 @@
 import { NextFunction, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { Household } from '../models/Household';
+import logger from '../config/logger';
 import { User } from '../models/User';
 import { HouseholdService } from '../services/householdService';
 import { UserService } from '../services/userService';
@@ -18,13 +18,22 @@ export class UserController {
 
   public getCurrentUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     try {
+      logger.debug('getCurrentUser called', {
+        userId: req.user?.id,
+        authProviderId: req.user?.authProviderId,
+      });
       if (!req.user) {
+        logger.warn('User not authenticated in getCurrentUser');
         throw new AppError('User not authenticated', 401);
       }
 
       const updatedUser = await this.userService.getUserByAuthProviderId(req.user.authProviderId);
+      logger.debug('User fetched from service', { updatedUser });
 
       if (!updatedUser) {
+        logger.warn('User not found in getCurrentUser', {
+          authProviderId: req.user.authProviderId,
+        });
         throw new AppError('User not found', 404);
       }
 
@@ -36,6 +45,7 @@ export class UserController {
         households: updatedUser.households,
       });
     } catch (error) {
+      logger.error('Error in getCurrentUser', { error });
       next(error);
     }
   };

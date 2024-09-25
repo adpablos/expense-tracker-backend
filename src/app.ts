@@ -44,8 +44,12 @@ export function createApp(container: Container): express.Application {
 
   app.use(cors(corsOptions));
 
-  const requestLogger = container.get<express.RequestHandler>(DI_TYPES.RequestLogger);
-  const responseLogger = container.get<express.RequestHandler>(DI_TYPES.ResponseLogger);
+  const requestLogger = container.isBound(DI_TYPES.RequestLogger)
+    ? container.get<express.RequestHandler>(DI_TYPES.RequestLogger)
+    : (req: express.Request, res: express.Response, next: express.NextFunction) => next();
+  const responseLogger = container.isBound(DI_TYPES.ResponseLogger)
+    ? container.get<express.RequestHandler>(DI_TYPES.ResponseLogger)
+    : (req: express.Request, res: express.Response, next: express.NextFunction) => next();
 
   app.use(requestLogger);
   app.use(responseLogger);

@@ -1,6 +1,7 @@
 import { NextFunction, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
+import logger from '../config/logger';
 import { Household } from '../models/Household';
 import { User } from '../models/User';
 import { NotificationService } from '../services/external/notificationService';
@@ -87,6 +88,24 @@ export class HouseholdController {
       await this.householdService.removeMember(householdId, userId, req.user!.id);
       res.status(200).json({ message: 'Member removed successfully' });
     } catch (error) {
+      next(error);
+    }
+  };
+
+  public getUserHouseholds = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+    try {
+      logger.debug('getUserHouseholds called', { userId: req.user?.id });
+      if (!req.user) {
+        logger.warn('User not authenticated in getUserHouseholds');
+        throw new AppError('User not authenticated', 401);
+      }
+
+      const households = await this.householdService.getUserHouseholds(req.user.id);
+      logger.debug('Households fetched from service', { count: households.length });
+
+      res.json(households);
+    } catch (error) {
+      logger.error('Error in getUserHouseholds', { error });
       next(error);
     }
   };

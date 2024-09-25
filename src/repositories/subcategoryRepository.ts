@@ -9,7 +9,7 @@ import { AppError } from '../utils/AppError';
 
 @injectable()
 export class SubcategoryRepository {
-  constructor(@inject(DI_TYPES.Pool) private db: Pool & { connect: () => Promise<PoolClient> }) {}
+  constructor(@inject(DI_TYPES.DbPool) private db: Pool & { connect: () => Promise<PoolClient> }) {}
 
   async getAllSubcategories(householdId: string): Promise<Subcategory[]> {
     try {

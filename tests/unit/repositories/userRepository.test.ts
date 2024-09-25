@@ -13,7 +13,7 @@ describe('UserRepository', () => {
 
   beforeEach(() => {
     const container = createRepositoryTestContainer();
-    mockPool = container.get<Pool>(DI_TYPES.Pool) as jest.Mocked<Pool>;
+    mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     userRepository = container.get<UserRepository>(DI_TYPES.UserRepository);
   });
 

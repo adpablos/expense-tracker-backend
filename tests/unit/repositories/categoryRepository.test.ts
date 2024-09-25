@@ -12,7 +12,7 @@ describe('CategoryRepository', () => {
 
   beforeEach(() => {
     const container = createRepositoryTestContainer();
-    mockPool = container.get<Pool>(DI_TYPES.Pool) as jest.Mocked<Pool>;
+    mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     categoryRepository = container.get<CategoryRepository>(DI_TYPES.CategoryRepository);
     jest.clearAllMocks();
   });

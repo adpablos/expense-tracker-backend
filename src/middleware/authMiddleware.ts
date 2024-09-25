@@ -11,7 +11,7 @@ import { ExtendedRequest, ExtendedRequestHandler } from '../types/express';
 
 @injectable()
 export class AuthMiddleware {
-  constructor(@inject(DI_TYPES.UserService) private userService: UserService) {}
+  constructor(@inject(DI_TYPES.UserService) protected userService: UserService) {}
 
   public authMiddleware: ExtendedRequestHandler = (req, res, next) => {
     expressjwt({
@@ -26,32 +26,55 @@ export class AuthMiddleware {
       algorithms: ['RS256'],
     })(req, res, (err) => {
       if (err) {
-        logger.error('JWT Error: ', err);
-        return res.status(401).json({ message: 'Invalid token', error: err.message });
+        logger.error('JWT verification failed', {
+          error: err.name,
+          message: err.message,
+          url: req.url,
+          method: req.method,
+        });
+        return res.status(401).json({ message: 'Invalid token' });
       }
-      logger.info('Token verified, proceeding...');
       next();
     });
   };
 
   public attachUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
     if (!req.auth) {
+      logger.error('No authentication token provided', {
+        url: req.url,
+        method: req.method,
+      });
       return res.status(401).json({ message: 'No authentication token provided' });
     }
 
     try {
       const userData = await this.userService.getUserByAuthProviderId(req.auth.sub);
       if (!userData) {
+        logger.error('User not registered in the system', {
+          authProviderId: req.auth.sub,
+          url: req.url,
+          method: req.method,
+        });
         return res.status(403).json({ message: 'User not registered in the system' });
       }
 
       req.user = new User(userData.email, userData.name, userData.authProviderId);
       req.user.id = userData.id;
-      // Add any other properties you need from userData
+
+      logger.info('User authenticated and attached to request', {
+        userId: req.user.id,
+        url: req.url,
+        method: req.method,
+      });
 
       next();
     } catch (error) {
-      logger.error('Error in attachUser middleware', { error });
+      logger.error('Error attaching user to request', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        authProviderId: req.auth.sub,
+        url: req.url,
+        method: req.method,
+      });
       next(error);
     }
   };

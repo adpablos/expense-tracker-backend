@@ -43,7 +43,7 @@ export class HouseholdService {
   async getHouseholdById(id: string): Promise<Household> {
     logger.info('Fetching household by ID', { id });
     try {
-      const household = await this.householdRepository.getById(id);
+      const household = await this.householdRepository.getHouseholdById(id);
       if (!household) {
         logger.info('Household not found', { id });
         throw new AppError('Household not found', 404);
@@ -130,7 +130,7 @@ export class HouseholdService {
         throw new AppError('Invalid household ID format', 400);
       }
 
-      const household = await this.householdRepository.getById(householdId);
+      const household = await this.householdRepository.getHouseholdById(householdId);
       if (!household) {
         throw new AppError('Household not found', 404);
       }

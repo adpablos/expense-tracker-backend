@@ -1,6 +1,7 @@
 import { injectable, inject } from 'inversify';
 
 import logger from '../config/logger';
+import { ROLES } from '../constants';
 import { Household } from '../models/Household';
 import { User } from '../models/User';
 import { HouseholdRepository } from '../repositories/householdRepository';
@@ -63,17 +64,21 @@ export class UserService {
       throw new AppError(`Invalid user: ${errors.join(', ')}`, 400);
     }
 
-    // Verify if user already exists
-    const existingUser = await this.userRepository.getUserByAuthProviderId(user.authProviderId);
-    if (existingUser) {
-      throw new AppError('User already exists', 409);
-    }
-
     try {
+      // Verify if user already exists
+      const existingUser = await this.userRepository.getUserByAuthProviderId(user.authProviderId);
+      if (existingUser) {
+        logger.warn('User already exists', { authProviderId: user.authProviderId });
+        throw new AppError('User already exists', 409);
+      }
+
       // Delegate the creation of user and household to the transaction coordinator
       return await this.userHouseholdCoordinator.createUserWithHousehold(user, householdName);
     } catch (error) {
       logger.error('Error creating user with household', { error });
+      if (error instanceof AppError) {
+        throw error; // Propagar el error original si es un AppError
+      }
       throw new AppError('Error creating user with household', 500);
     }
   }
@@ -91,13 +96,13 @@ export class UserService {
   }
 
   async getUserByAuthProviderId(authProviderId: string): Promise<User | null> {
-    logger.info('Fetching user by auth provider ID', { authProviderId });
+    logger.debug('getUserByAuthProviderId called', { authProviderId });
     try {
       const user = await this.userRepository.getUserByAuthProviderId(authProviderId);
-      logger.info('Fetched user', { user });
+      logger.debug('User fetched from repository', { user });
       return user;
     } catch (error) {
-      logger.error('Error fetching user', { error });
+      logger.error('Error fetching user by auth provider ID', { error });
       throw new AppError('Error fetching user', 500);
     }
   }
@@ -105,9 +110,17 @@ export class UserService {
   async deleteUser(id: string): Promise<void> {
     logger.info('Deleting user', { id });
     try {
+      logger.debug('Fetching user households...');
       const userHouseholds = await this.householdRepository.getUserHouseholds(id);
+      logger.debug('User households:', { userHouseholds });
+
+      logger.debug('Handling user households...');
       await this.handleUserHouseholds(id, userHouseholds);
+
+      logger.debug('Removing user from all households...');
       await this.userRepository.removeUserFromAllHouseholds(id);
+
+      logger.debug('Deleting user...');
       await this.userRepository.deleteUser(id);
       logger.info('Deleted user', { id });
     } catch (error) {
@@ -118,12 +131,26 @@ export class UserService {
   }
 
   private async handleUserHouseholds(userId: string, households: Household[]): Promise<void> {
+    logger.debug('Handling user households for user:', { userId });
+    logger.debug('Number of households:', { count: households.length });
     for (const household of households) {
       const members = await this.householdRepository.getMembers(household.id);
-      if (members.length === 1) {
-        await this.householdRepository.deleteOrphanedHousehold(household.id);
-      } else if (members.find((m) => m.userId === userId && m.role === 'owner')) {
+      logger.debug('Household members:', { householdId: household.id, members });
+
+      const userMember = members.find((m) => m.userId === userId);
+      logger.debug('User member:', { userMember });
+
+      if (userMember && userMember.role === ROLES.OWNER) {
+        logger.debug('User is owner, transferring ownership', { householdId: household.id });
         await this.householdRepository.transferHouseholdOwnership(userId, household.id);
+      } else if (members.length === 1) {
+        logger.debug('Household has only one member, deleting orphaned household', {
+          householdId: household.id,
+        });
+        await this.householdRepository.deleteOrphanedHousehold(household.id);
+      } else {
+        logger.debug('User is not owner, removing from household', { householdId: household.id });
+        await this.householdRepository.removeMember(household.id, userId);
       }
     }
   }

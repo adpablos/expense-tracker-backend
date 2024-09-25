@@ -1,11 +1,16 @@
 import { v4 as uuidv4 } from 'uuid';
 
+import { ROLES, STATUS } from '../constants';
+
+type Role = (typeof ROLES)[keyof typeof ROLES];
+type Status = (typeof STATUS)[keyof typeof STATUS];
+
 interface HouseholdMemberData {
   id?: string;
   household_id: string;
   user_id: string;
-  role: 'owner' | 'member';
-  status: 'active' | 'invited' | 'removed';
+  role: Role;
+  status: Status;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -14,16 +19,16 @@ export class HouseholdMember {
   public id: string;
   public householdId: string;
   public userId: string;
-  public role: 'owner' | 'member';
-  public status: 'active' | 'invited' | 'removed';
+  public role: Role;
+  public status: Status;
   public createdAt: Date;
   public updatedAt: Date;
 
   constructor(
     householdId: string,
     userId: string,
-    role: 'owner' | 'member',
-    status: 'active' | 'invited' | 'removed',
+    role: Role,
+    status: Status,
     id?: string,
     createdAt?: Date,
     updatedAt?: Date

@@ -60,7 +60,7 @@ describe('HouseholdService', () => {
     it('should return a household when it exists', async () => {
       const householdId = '123';
       const mockHousehold = new Household('Test Household', householdId);
-      mockHouseholdRepository.getById.mockResolvedValue(mockHousehold);
+      mockHouseholdRepository.getHouseholdById.mockResolvedValue(mockHousehold);
 
       const result = await householdService.getHouseholdById(householdId);
 
@@ -69,7 +69,7 @@ describe('HouseholdService', () => {
 
     it('should throw an error when the household does not exist', async () => {
       const householdId = '123';
-      mockHouseholdRepository.getById.mockResolvedValue(null);
+      mockHouseholdRepository.getHouseholdById.mockResolvedValue(null);
 
       await expect(householdService.getHouseholdById(householdId)).rejects.toThrow(
         'Household not found'
@@ -179,7 +179,7 @@ describe('HouseholdService', () => {
         new HouseholdMember(householdId, 'user2', 'member', 'active'),
       ];
 
-      mockHouseholdRepository.getById.mockResolvedValue(
+      mockHouseholdRepository.getHouseholdById.mockResolvedValue(
         new Household('Test Household', householdId)
       );
       mockHouseholdRepository.getMembers.mockResolvedValue(mockMembers);
@@ -192,7 +192,7 @@ describe('HouseholdService', () => {
     it('should throw an error if household does not exist', async () => {
       const householdId = '123e4567-e89b-12d3-a456-426614174000';
 
-      mockHouseholdRepository.getById.mockResolvedValue(null);
+      mockHouseholdRepository.getHouseholdById.mockResolvedValue(null);
 
       await expect(householdService.getHouseholdMembers(householdId)).rejects.toThrow(
         'Household not found'

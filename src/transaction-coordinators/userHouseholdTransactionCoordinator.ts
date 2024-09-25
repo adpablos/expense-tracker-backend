@@ -1,33 +1,42 @@
-import { Pool } from 'pg';
+import { injectable, inject } from 'inversify';
+import { Pool, PoolClient } from 'pg';
 
+import logger from '../config/logger';
 import { Household } from '../models/Household';
 import { HouseholdMember } from '../models/HouseholdMember';
 import { User } from '../models/User';
 import { HouseholdRepository } from '../repositories/householdRepository';
 import { UserRepository } from '../repositories/userRepository';
+import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
+@injectable()
 export class UserHouseholdTransactionCoordinator {
   constructor(
-    private userRepository: UserRepository,
-    private householdRepository: HouseholdRepository,
-    private dbPool: Pool
+    @inject(DI_TYPES.UserRepository) private userRepository: UserRepository,
+    @inject(DI_TYPES.HouseholdRepository) private householdRepository: HouseholdRepository,
+    @inject(DI_TYPES.DbPool) private dbPool: Pool
   ) {}
 
   async createUserWithHousehold(
     user: User,
-    householdName: string
+    householdName: string,
+    client?: PoolClient
   ): Promise<{ user: User; household: Household }> {
-    const client = await this.dbPool.connect();
+    const shouldManageTransaction = !client;
+    const dbClient = client || (await this.dbPool.connect());
+
     try {
-      await client.query('BEGIN');
+      if (shouldManageTransaction) await dbClient.query('BEGIN');
 
       // User creation
-      const createdUser = await this.userRepository.createUserWithClient(client, user);
+      const createdUser = await this.userRepository.createUserWithClient(dbClient, user);
+      logger.debug('Created user:', { user: createdUser });
 
       // Household creation
       const household = new Household(householdName);
-      const createdHousehold = await this.householdRepository.createWithClient(client, household);
+      const createdHousehold = await this.householdRepository.createWithClient(dbClient, household);
+      logger.debug('Created household:', { household: createdHousehold });
 
       // Add user to household
       const householdMember = new HouseholdMember(
@@ -36,20 +45,35 @@ export class UserHouseholdTransactionCoordinator {
         'owner',
         'active'
       );
-      await this.householdRepository.addMemberWithClient(client, householdMember);
+      logger.debug('Creating household member:', { householdMember });
+      await this.householdRepository.addMemberWithClient(dbClient, householdMember);
 
       // Update user with household
       createdUser.households = [createdHousehold.id];
-      await this.userRepository.updateUserWithClient(client, createdUser.id, createdUser);
+      logger.debug('Updating user with household:', { user: createdUser });
+      const updatedUser = await this.userRepository.updateUserWithClient(dbClient, createdUser.id, {
+        householdUpdates: [
+          {
+            householdId: createdHousehold.id,
+            role: 'owner',
+            status: 'active',
+          },
+        ],
+      });
+      logger.debug('Updated user:', { user: updatedUser });
 
-      await client.query('COMMIT');
+      if (shouldManageTransaction) await dbClient.query('COMMIT');
 
-      return { user: createdUser, household: createdHousehold };
+      return { user: updatedUser, household: createdHousehold };
     } catch (error) {
-      await client.query('ROLLBACK');
+      if (shouldManageTransaction) await dbClient.query('ROLLBACK');
+      logger.error('Error in createUserWithHousehold:', { error });
+      if (error instanceof AppError) {
+        throw error;
+      }
       throw new AppError('Error creating user with household', 500);
     } finally {
-      client.release();
+      if (shouldManageTransaction) dbClient.release();
     }
   }
 }

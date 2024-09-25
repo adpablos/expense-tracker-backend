@@ -253,5 +253,30 @@ export default function (container: Container) {
    */
   router.delete('/:householdId/members/:userId', householdController.removeMember);
 
+  /**
+   * @swagger
+   * /api/households/me:
+   *   get:
+   *     summary: Get all households for the authenticated user
+   *     tags: [Households]
+   *     description: Retrieves a list of all households associated with the authenticated user.
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: List of user's households retrieved successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Household'
+   *       401:
+   *         description: Unauthorized - user is not authenticated
+   *       500:
+   *         description: Internal server error - failed to retrieve user's households
+   */
+  router.get('/me', householdController.getUserHouseholds);
+
   return router;
 }

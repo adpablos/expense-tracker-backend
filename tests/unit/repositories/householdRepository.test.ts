@@ -14,7 +14,7 @@ describe('HouseholdRepository', () => {
 
   beforeEach(() => {
     const container = createRepositoryTestContainer();
-    mockPool = container.get<Pool>(DI_TYPES.Pool) as jest.Mocked<Pool>;
+    mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     householdRepository = container.get<HouseholdRepository>(DI_TYPES.HouseholdRepository);
     jest.clearAllMocks();
   });
@@ -113,7 +113,7 @@ describe('HouseholdRepository', () => {
         rows: [{ id: householdId, name: 'Test Household' }],
       });
 
-      const result = await householdRepository.getById(householdId);
+      const result = await householdRepository.getHouseholdById(householdId);
 
       expect(result).toBeInstanceOf(Household);
       expect(result?.id).toBe(householdId);
@@ -123,7 +123,7 @@ describe('HouseholdRepository', () => {
     it('should return null when the household does not exist', async () => {
       const householdId = '123';
       (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
-      const result = await householdRepository.getById(householdId);
+      const result = await householdRepository.getHouseholdById(householdId);
 
       expect(result).toBeNull();
     });
@@ -418,6 +418,68 @@ describe('HouseholdRepository', () => {
       );
       expect(mockClient.query).toHaveBeenNthCalledWith(3, 'ROLLBACK');
       expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('getMember', () => {
+    it('should return a household member when it exists', async () => {
+      const householdId = 'household-1';
+      const userId = 'user-1';
+      const mockMember = {
+        id: 'member-1',
+        household_id: householdId,
+        user_id: userId,
+        role: 'owner',
+        status: 'active',
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      (mockPool.query as jest.Mock).mockResolvedValueOnce({
+        rows: [mockMember],
+      });
+
+      const result = await householdRepository.getMember(householdId, userId);
+
+      expect(result).toBeInstanceOf(HouseholdMember);
+      expect(result?.householdId).toBe(householdId);
+      expect(result?.userId).toBe(userId);
+      expect(result?.role).toBe('owner');
+      expect(result?.status).toBe('active');
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM household_members WHERE household_id = $1 AND user_id = $2',
+        [householdId, userId]
+      );
+    });
+
+    it('should return null when the household member does not exist', async () => {
+      const householdId = 'household-1';
+      const userId = 'user-1';
+
+      (mockPool.query as jest.Mock).mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const result = await householdRepository.getMember(householdId, userId);
+
+      expect(result).toBeNull();
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM household_members WHERE household_id = $1 AND user_id = $2',
+        [householdId, userId]
+      );
+    });
+
+    it('should throw an AppError if there is a database error', async () => {
+      const householdId = 'household-1';
+      const userId = 'user-1';
+
+      (mockPool.query as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(householdRepository.getMember(householdId, userId)).rejects.toThrow(AppError);
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT * FROM household_members WHERE household_id = $1 AND user_id = $2',
+        [householdId, userId]
+      );
     });
   });
 });

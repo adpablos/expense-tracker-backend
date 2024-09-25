@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { Container } from 'inversify';
 import { Pool } from 'pg';
 
+// Importa todos los servicios necesarios
+
 import { CategoryRepository } from '../src/repositories/categoryRepository';
 import { ExpenseRepository } from '../src/repositories/expenseRepository';
 import { HouseholdRepository } from '../src/repositories/householdRepository';
@@ -11,6 +13,7 @@ import { DI_TYPES } from '../src/types/di';
 
 // Importaciones de mocks
 
+import { mockAuthMiddleware } from './integration/setup/mockAuthMiddleware';
 import {
   createMockAuthMiddleware,
   createMockHouseholdMiddleware,
@@ -36,23 +39,38 @@ import {
   mockCategoryHierarchyService,
 } from './unit/mocks/serviceMocks';
 
+// Añade esta importación al principio del archivo
+
 export function createTestContainer(
   options: {
     mockServices?: boolean;
     mockRepositories?: boolean;
     mockMiddleware?: boolean;
+    mockDbPool?: boolean;
   } = {}
 ) {
   const container = new Container();
 
-  // Mock Pool (siempre mockeado para evitar conexiones reales a la base de datos)
-  const mockPool = {
-    connect: jest.fn(),
-    query: jest.fn(),
-    end: jest.fn(),
-    on: jest.fn(),
-  };
-  container.bind<Pool>(DI_TYPES.Pool).toConstantValue(mockPool as unknown as Pool);
+  if (options.mockDbPool) {
+    // Mock Pool (to avoid connection to the database)
+    const mockPool = {
+      connect: jest.fn(),
+      query: jest.fn(),
+      end: jest.fn(),
+      on: jest.fn(),
+    };
+    container.bind<Pool>(DI_TYPES.DbPool).toConstantValue(mockPool as unknown as Pool);
+  } else {
+    // Use the real Pool for integration tests
+    const realPool = new Pool({
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_DATABASE,
+      password: process.env.DB_PASSWORD,
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+    });
+    container.bind<Pool>(DI_TYPES.DbPool).toConstantValue(realPool);
+  }
 
   if (options.mockServices) {
     // Bind mock services
@@ -101,7 +119,7 @@ export function createTestContainer(
   return container;
 }
 
-// Funciones de ayuda para crear contenedores específicos
+// Helper functions to create specific containers
 
 export function createRouteTestContainer() {
   return createTestContainer({ mockServices: true, mockMiddleware: true });
@@ -113,4 +131,77 @@ export function createServiceTestContainer() {
 
 export function createRepositoryTestContainer() {
   return createTestContainer();
+}
+
+export async function createIntegrationTestContainer() {
+  const container = new Container();
+
+  // Vincula todos los tipos definidos en DI_TYPES
+  for (const [key, value] of Object.entries(DI_TYPES)) {
+    try {
+      const paths = [
+        `../src/services/${key}`,
+        `../src/controllers/${key}`,
+        `../src/repositories/${key}`,
+        `../src/middleware/${key}`,
+      ];
+
+      for (const path of paths) {
+        try {
+          const module = await import(path);
+          if (module[key]) {
+            container.bind(value).to(module[key]);
+            break;
+          } else if (module.default) {
+            // Para los middleware que exportan una función por defecto
+            container.bind(value).toFunction(module.default);
+            break;
+          }
+        } catch (error) {
+          // Ignorar errores de importación y continuar con el siguiente path
+        }
+      }
+    } catch (error) {
+      console.warn(`No se pudo vincular automáticamente: ${key}`);
+    }
+  }
+
+  // Vinculaciones especiales que no siguen el patrón estándar
+  container.bind<Pool>(DI_TYPES.DbPool).toConstantValue(
+    new Pool({
+      user: process.env.DB_USER,
+      host: process.env.DB_HOST,
+      database: process.env.DB_DATABASE,
+      password: process.env.DB_PASSWORD,
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+    })
+  );
+
+  // Importar y vincular middleware específicos
+  const middlewarePaths = [
+    '../src/middleware/requestLogger',
+    '../src/middleware/responseLogger',
+    '../src/middleware/errorHandler',
+  ];
+
+  for (const path of middlewarePaths) {
+    const module = await import(path);
+    const middlewareName = path.split('/').pop() as keyof typeof DI_TYPES;
+    if (module.default) {
+      container.bind(DI_TYPES[middlewareName]).toFunction(module.default);
+    }
+  }
+
+  // Usar mocks para AuthMiddleware y HouseholdMiddleware
+  mockAuthMiddleware(container);
+  // Aquí deberías añadir un mockHouseholdMiddleware similar si lo necesitas
+
+  // Asegúrate de vincular todos los repositorios necesarios
+  container.bind<UserRepository>(DI_TYPES.UserRepository).to(UserRepository);
+  container.bind<HouseholdRepository>(DI_TYPES.HouseholdRepository).to(HouseholdRepository);
+  container.bind<CategoryRepository>(DI_TYPES.CategoryRepository).to(CategoryRepository);
+  container.bind<ExpenseRepository>(DI_TYPES.ExpenseRepository).to(ExpenseRepository);
+  container.bind<SubcategoryRepository>(DI_TYPES.SubcategoryRepository).to(SubcategoryRepository);
+
+  return container;
 }
