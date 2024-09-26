@@ -13,7 +13,7 @@ import { DI_TYPES } from '../src/types/di';
 
 // Importaciones de mocks
 
-import { mockAuthMiddleware } from './integration/setup/mockAuthMiddleware';
+import { mockAuthMiddleware } from './integration/mocks/mockAuthMiddleware';
 import {
   createMockAuthMiddleware,
   createMockHouseholdMiddleware,
