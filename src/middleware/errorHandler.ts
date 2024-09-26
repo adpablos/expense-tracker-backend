@@ -1,4 +1,4 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { UnauthorizedError } from 'express-jwt';
 
 import logger from '../config/logger';
@@ -9,19 +9,15 @@ interface DatabaseError extends Error {
   code?: string;
 }
 
-export const errorHandler = (
-  err: Error,
-  req: ExtendedRequest,
-  res: Response,
-  _next: NextFunction
-) => {
+export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
+  const extendedReq = req as ExtendedRequest;
   const logContext = {
-    method: req.method,
-    url: req.url,
-    params: req.params,
-    query: req.query,
-    body: req.body,
-    userId: req.user?.id,
+    method: extendedReq.method,
+    url: extendedReq.url,
+    params: extendedReq.params,
+    query: extendedReq.query,
+    body: extendedReq.body,
+    userId: extendedReq.user?.id,
     errorName: err.name,
     errorMessage: err.message,
     errorStack:
