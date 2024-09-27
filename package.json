@@ -9,6 +9,7 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "test:unit": "jest --config jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter",
+    "test:unit:specific": "jest --config jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter --",
     "test:coverage": "jest --config jest.unit.config.ts --coverage",
     "test:integration": "docker-compose -f docker-compose.test.yml up -d --force-recreate && sleep 2 && jest --config jest.integration.config.ts --runInBand --detectOpenHandles --reporters=default --reporters=jest-summary-reporter",
     "test:integration:specific": "npm run test:integration -- --testPathPattern",
