@@ -4,6 +4,8 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '../../../src/config/logger';
 import { requestLogger } from '../../../src/middleware/requestLogger';
 
+jest.mock('../../../src/config/logger');
+
 describe('requestLogger middleware', () => {
   it('debe registrar la solicitud entrante y llamar a next()', () => {
     // Create mock objects for Request, Response, and NextFunction
@@ -21,10 +23,10 @@ describe('requestLogger middleware', () => {
     const next = jest.fn() as NextFunction;
 
     // Call the middleware
-    requestLogger(req, res, next);
+    requestLogger(req as any, res, next);
 
     // Verify that the logger was called with the correct arguments
-    expect(logger.info).toHaveBeenCalledWith('Incoming request', {
+    expect(logger.info).toHaveBeenCalledWith('Incoming request: GET /api/test', {
       method: 'GET',
       url: 'http://localhost:3000/api/test',
       params: { id: '123' },
