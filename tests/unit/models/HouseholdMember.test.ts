@@ -30,7 +30,12 @@ describe('HouseholdMember Model', () => {
 
   it('should validate a HouseholdMember instance', () => {
     const validMember = new HouseholdMember(uuidv4(), uuidv4(), 'owner', 'active');
-    const invalidMember = new HouseholdMember('', '', '' as any, '' as any);
+    const invalidMember = new HouseholdMember(
+      '',
+      '',
+      '' as 'owner' | 'member',
+      '' as 'active' | 'invited' | 'removed'
+    );
 
     expect(validMember.validate()).toHaveLength(0);
     expect(invalidMember.validate()).toEqual([

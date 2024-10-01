@@ -1,14 +1,15 @@
 // src/middleware/__tests__/requestLogger.test.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 
 import logger from '../../../src/config/logger';
 import { requestLogger } from '../../../src/middleware/requestLogger';
+import { ExtendedRequest } from '../../../src/types/express'; // Importa ExtendedRequest
 
 jest.mock('../../../src/config/logger');
 
 describe('requestLogger middleware', () => {
   it('debe registrar la solicitud entrante y llamar a next()', () => {
-    // Create mock objects for Request, Response, and NextFunction
+    // Create mock objects for ExtendedRequest, Response, and NextFunction
     const req = {
       method: 'GET',
       protocol: 'http',
@@ -17,13 +18,14 @@ describe('requestLogger middleware', () => {
       params: { id: '123' },
       query: { search: 'test' },
       body: { key: 'value' },
-    } as unknown as Request;
+      startTime: Date.now(), // Añade la propiedad startTime
+    } as unknown as ExtendedRequest;
 
     const res = {} as Response;
     const next = jest.fn() as NextFunction;
 
     // Call the middleware
-    requestLogger(req as any, res, next);
+    requestLogger(req, res, next);
 
     // Verify that the logger was called with the correct arguments
     expect(logger.info).toHaveBeenCalledWith('Incoming request: GET /api/test', {

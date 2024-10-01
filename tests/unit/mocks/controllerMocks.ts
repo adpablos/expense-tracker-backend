@@ -5,7 +5,7 @@ import { SubcategoryController } from '../../../src/controllers/subcategoryContr
 import { UserController } from '../../../src/controllers/userController';
 
 type MockedClassMethods<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => any ? jest.Mock : T[K];
+  [K in keyof T]: T[K] extends (...args: unknown[]) => unknown ? jest.Mock : T[K];
 };
 
 export const mockUserController: MockedClassMethods<UserController> = {
@@ -23,6 +23,7 @@ export const mockHouseholdController: MockedClassMethods<HouseholdController> = 
   rejectInvitation: jest.fn(),
   getHouseholdMembers: jest.fn(),
   removeMember: jest.fn(),
+  getUserHouseholds: jest.fn(),
 };
 
 export const mockExpenseController: MockedClassMethods<ExpenseController> = {

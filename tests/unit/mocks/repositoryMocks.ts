@@ -5,7 +5,7 @@ import { SubcategoryRepository } from '../../../src/repositories/subcategoryRepo
 import { UserRepository } from '../../../src/repositories/userRepository';
 
 type MockedClassMethods<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => any ? jest.Mock : T[K];
+  [K in keyof T]: T[K] extends (...args: unknown[]) => unknown ? jest.Mock : T[K];
 };
 
 export const mockUserRepository: MockedClassMethods<UserRepository> = {
@@ -15,6 +15,8 @@ export const mockUserRepository: MockedClassMethods<UserRepository> = {
   deleteUser: jest.fn(),
   getUserByAuthProviderId: jest.fn(),
   removeUserFromAllHouseholds: jest.fn(),
+  createUserWithClient: jest.fn(),
+  updateUserWithClient: jest.fn(),
 };
 
 export const mockHouseholdRepository: MockedClassMethods<HouseholdRepository> = {
@@ -29,6 +31,9 @@ export const mockHouseholdRepository: MockedClassMethods<HouseholdRepository> = 
   getDefaultHouseholdForUser: jest.fn(),
   deleteOrphanedHousehold: jest.fn(),
   transferHouseholdOwnership: jest.fn(),
+  createWithClient: jest.fn(),
+  addMemberWithClient: jest.fn(),
+  getMember: jest.fn(),
 };
 
 export const mockCategoryRepository: MockedClassMethods<CategoryRepository> = {
@@ -37,6 +42,7 @@ export const mockCategoryRepository: MockedClassMethods<CategoryRepository> = {
   updateCategory: jest.fn(),
   deleteCategory: jest.fn(),
   deleteSubcategoriesByCategoryId: jest.fn(),
+  getCategoryById: jest.fn(),
 };
 
 export const mockExpenseRepository: MockedClassMethods<ExpenseRepository> = {
@@ -52,4 +58,6 @@ export const mockSubcategoryRepository: MockedClassMethods<SubcategoryRepository
   createSubcategory: jest.fn(),
   updateSubcategory: jest.fn(),
   deleteSubcategory: jest.fn(),
+  getSubcategoryById: jest.fn(),
+  getSubcategoriesByCategoryId: jest.fn(),
 };
