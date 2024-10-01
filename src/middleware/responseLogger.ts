@@ -12,12 +12,11 @@ export const responseLogger = (req: ExtendedRequest, res: Response, next: NextFu
       method: req.method,
       url: req.originalUrl,
       statusCode: res.statusCode,
-      responseTime: Date.now() - req.startTime,
-      contentLength: res.get('Content-Length'),
-      body: process.env.NODE_ENV !== 'production' ? body : undefined, // Just log the body in non-production environments
+      responseTime: Date.now() - (req.startTime || Date.now()),
+      contentLength: res.get ? res.get('Content-Length') : undefined,
+      body: process.env.NODE_ENV !== 'production' ? body : undefined,
     };
 
-    // If the body is an object, try to convert it to a JSON string
     if (typeof logData.body === 'object') {
       try {
         logData.body = JSON.stringify(logData.body);
@@ -26,7 +25,6 @@ export const responseLogger = (req: ExtendedRequest, res: Response, next: NextFu
       }
     }
 
-    // Truncate the body if it's too long
     if (typeof logData.body === 'string' && logData.body.length > 1000) {
       logData.body = logData.body.substring(0, 1000) + '... [truncated]';
     }
@@ -34,7 +32,7 @@ export const responseLogger = (req: ExtendedRequest, res: Response, next: NextFu
     logger.info(`Outgoing response: ${res.statusCode} ${req.method} ${req.originalUrl}`, logData);
 
     res.send = originalSend;
-    return res.send(body);
+    return originalSend.call(this, body);
   };
 
   next();
