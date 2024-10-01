@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { Pool, PoolClient } from 'pg';
 
 import { Household } from '../../../src/models/Household';

@@ -15,6 +15,7 @@ describe('HouseholdService', () => {
   beforeEach(() => {
     mockHouseholdRepository = {
       create: jest.fn(),
+      getHouseholdById: jest.fn(),
       getById: jest.fn(),
       isMember: jest.fn(),
       addMember: jest.fn(),

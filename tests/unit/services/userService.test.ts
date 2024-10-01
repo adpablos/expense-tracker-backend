@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { ROLES, STATUS } from '../../../src/constants';
 import { Household } from '../../../src/models/Household';
 import { HouseholdMember } from '../../../src/models/HouseholdMember';
 import { User } from '../../../src/models/User';
@@ -34,6 +35,7 @@ describe('UserService', () => {
       getMembers: jest.fn(),
       deleteOrphanedHousehold: jest.fn(),
       transferHouseholdOwnership: jest.fn(),
+      removeMember: jest.fn(), // Asegúrate de que este método esté definido aquí
     } as unknown as jest.Mocked<HouseholdRepository>;
 
     mockUserHouseholdCoordinator = {
@@ -236,26 +238,47 @@ describe('UserService', () => {
       ];
 
       mockHouseholdRepository.getUserHouseholds.mockResolvedValue(mockHouseholds);
-      mockHouseholdRepository.getMembers.mockResolvedValue([
-        new HouseholdMember(
-          'household-id',
-          userId,
-          'owner',
-          'active',
-          'member-id',
-          new Date(),
-          new Date()
-        ),
-        new HouseholdMember(
-          'household-id',
-          'other-user',
-          'member',
-          'active',
-          'other-member-id',
-          new Date(),
-          new Date()
-        ),
-      ]);
+      mockHouseholdRepository.getMembers
+        .mockResolvedValueOnce([
+          new HouseholdMember(
+            'household-1',
+            userId,
+            ROLES.OWNER,
+            STATUS.ACTIVE,
+            'member-id-1',
+            new Date(),
+            new Date()
+          ),
+          new HouseholdMember(
+            'household-1',
+            'other-user-1',
+            ROLES.MEMBER,
+            STATUS.ACTIVE,
+            'other-member-id-1',
+            new Date(),
+            new Date()
+          ),
+        ])
+        .mockResolvedValueOnce([
+          new HouseholdMember(
+            'household-2',
+            userId,
+            ROLES.OWNER,
+            STATUS.ACTIVE,
+            'member-id-2',
+            new Date(),
+            new Date()
+          ),
+          new HouseholdMember(
+            'household-2',
+            'other-user-2',
+            ROLES.MEMBER,
+            STATUS.ACTIVE,
+            'other-member-id-2',
+            new Date(),
+            new Date()
+          ),
+        ]);
       mockHouseholdRepository.transferHouseholdOwnership.mockResolvedValue();
       mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
       mockUserRepository.deleteUser.mockResolvedValue();
@@ -265,6 +288,14 @@ describe('UserService', () => {
       expect(mockHouseholdRepository.getUserHouseholds).toHaveBeenCalledWith(userId);
       expect(mockHouseholdRepository.getMembers).toHaveBeenCalledTimes(2);
       expect(mockHouseholdRepository.transferHouseholdOwnership).toHaveBeenCalledTimes(2);
+      expect(mockHouseholdRepository.transferHouseholdOwnership).toHaveBeenCalledWith(
+        userId,
+        'household-1'
+      );
+      expect(mockHouseholdRepository.transferHouseholdOwnership).toHaveBeenCalledWith(
+        userId,
+        'household-2'
+      );
       expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
       expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
     });
@@ -280,28 +311,28 @@ describe('UserService', () => {
     });
 
     it('should delete a user and their orphaned household', async () => {
-      const userId = 'user-id';
-      const mockHouseholds = [new Household('Orphaned Household', 'household-1')];
+      const userId = 'user-1';
+      const householdId = 'household-1';
 
-      mockHouseholdRepository.getUserHouseholds.mockResolvedValue(mockHouseholds);
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue([
+        new Household('Test Household', householdId),
+      ]);
+
       mockHouseholdRepository.getMembers.mockResolvedValue([
         new HouseholdMember(
-          'household-1',
+          householdId,
           userId,
-          'owner',
-          'active',
+          ROLES.MEMBER,
+          STATUS.ACTIVE,
           'member-id',
           new Date(),
           new Date()
         ),
       ]);
-      mockHouseholdRepository.deleteOrphanedHousehold.mockResolvedValue();
-      mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
-      mockUserRepository.deleteUser.mockResolvedValue();
 
       await userService.deleteUser(userId);
 
-      expect(mockHouseholdRepository.deleteOrphanedHousehold).toHaveBeenCalledWith('household-1');
+      expect(mockHouseholdRepository.deleteOrphanedHousehold).toHaveBeenCalledWith(householdId);
       expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
       expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
     });
@@ -315,8 +346,8 @@ describe('UserService', () => {
         new HouseholdMember(
           'household-1',
           'other-user',
-          'owner',
-          'active',
+          ROLES.OWNER,
+          STATUS.ACTIVE,
           'other-member-id',
           new Date(),
           new Date()
@@ -324,19 +355,112 @@ describe('UserService', () => {
         new HouseholdMember(
           'household-1',
           userId,
-          'member',
-          'active',
+          ROLES.MEMBER,
+          STATUS.ACTIVE,
           'member-id',
           new Date(),
           new Date()
         ),
       ]);
+      mockHouseholdRepository.removeMember.mockResolvedValue(true);
       mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
       mockUserRepository.deleteUser.mockResolvedValue();
 
       await userService.deleteUser(userId);
 
       expect(mockHouseholdRepository.transferHouseholdOwnership).not.toHaveBeenCalled();
+      expect(mockHouseholdRepository.removeMember).toHaveBeenCalledWith('household-1', userId);
+      expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
+      expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
+    });
+
+    it('should transfer ownership when deleting a user who owns a household with multiple members', async () => {
+      const userId = 'owner-user-id';
+      const householdId = 'household-id';
+
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue([
+        new Household('Test Household', householdId),
+      ]);
+
+      mockHouseholdRepository.getMembers.mockResolvedValue([
+        new HouseholdMember(
+          householdId,
+          userId,
+          ROLES.OWNER,
+          STATUS.ACTIVE,
+          'member-id-1',
+          new Date(),
+          new Date()
+        ),
+        new HouseholdMember(
+          householdId,
+          'other-user-id',
+          ROLES.MEMBER,
+          STATUS.ACTIVE,
+          'member-id-2',
+          new Date(),
+          new Date()
+        ),
+      ]);
+
+      await userService.deleteUser(userId);
+
+      expect(mockHouseholdRepository.transferHouseholdOwnership).toHaveBeenCalledWith(
+        userId,
+        householdId
+      );
+      expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
+      expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
+      expect(mockHouseholdRepository.deleteOrphanedHousehold).not.toHaveBeenCalled();
+    });
+
+    it('should remove user from all households when deleting a non-owner member', async () => {
+      const userId = 'member-user-id';
+      const householdIds = ['household-id-1', 'household-id-2'];
+
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue([
+        new Household('Test Household 1', householdIds[0]),
+        new Household('Test Household 2', householdIds[1]),
+      ]);
+
+      mockHouseholdRepository.getMembers.mockResolvedValue([
+        new HouseholdMember(
+          householdIds[0],
+          'owner-id',
+          ROLES.OWNER,
+          STATUS.ACTIVE,
+          'member-id-1',
+          new Date(),
+          new Date()
+        ),
+        new HouseholdMember(
+          householdIds[0],
+          userId,
+          ROLES.MEMBER,
+          STATUS.ACTIVE,
+          'member-id-2',
+          new Date(),
+          new Date()
+        ),
+      ]);
+
+      await userService.deleteUser(userId);
+
+      expect(mockHouseholdRepository.transferHouseholdOwnership).not.toHaveBeenCalled();
+      expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
+      expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
+      expect(mockHouseholdRepository.deleteOrphanedHousehold).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors during user deletion', async () => {
+      const userId = 'user-id';
+
+      mockHouseholdRepository.getUserHouseholds.mockResolvedValue([]);
+      mockUserRepository.removeUserFromAllHouseholds.mockResolvedValue();
+      mockUserRepository.deleteUser.mockRejectedValue(new Error('Database error'));
+
+      await expect(userService.deleteUser(userId)).rejects.toThrow('Error deleting user');
+
       expect(mockUserRepository.removeUserFromAllHouseholds).toHaveBeenCalledWith(userId);
       expect(mockUserRepository.deleteUser).toHaveBeenCalledWith(userId);
     });

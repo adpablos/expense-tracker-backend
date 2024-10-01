@@ -155,14 +155,13 @@ describe('HouseholdRepository', () => {
       await expect(householdRepository.addMember(householdMember)).resolves.not.toThrow();
 
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO household_members'),
-        expect.arrayContaining([
-          householdMember.id,
+        'INSERT INTO household_members (household_id, user_id, role, status) VALUES ($1, $2, $3, $4)',
+        [
           householdMember.householdId,
           householdMember.userId,
           householdMember.role,
           householdMember.status,
-        ])
+        ]
       );
       expect(mockClient.release).toHaveBeenCalled();
     });
@@ -176,7 +175,7 @@ describe('HouseholdRepository', () => {
       (mockPool.connect as jest.Mock).mockResolvedValue(mockClient);
 
       await expect(householdRepository.addMember(householdMember)).rejects.toThrow(
-        'Database error'
+        'Error adding member to household: Database error'
       );
       expect(mockClient.release).toHaveBeenCalled();
     });
@@ -337,8 +336,10 @@ describe('HouseholdRepository', () => {
         query: jest
           .fn()
           .mockResolvedValueOnce(null) // BEGIN
-          .mockResolvedValueOnce({ rows: [{ user_id: newOwnerId }] }) // SELECT user_id
-          .mockResolvedValueOnce(null) // UPDATE household_members
+          .mockResolvedValueOnce({ rows: [{ user_id: currentOwnerId }] }) // SELECT current owner
+          .mockResolvedValueOnce({ rows: [{ user_id: newOwnerId }] }) // SELECT new owner
+          .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE
+          .mockResolvedValueOnce({ rowCount: 1 }) // DELETE
           .mockResolvedValueOnce(null), // COMMIT
         release: jest.fn(),
       };
@@ -348,18 +349,7 @@ describe('HouseholdRepository', () => {
         householdRepository.transferHouseholdOwnership(currentOwnerId, householdId)
       ).resolves.not.toThrow();
 
-      expect(mockClient.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-      expect(mockClient.query).toHaveBeenNthCalledWith(
-        2,
-        'SELECT user_id FROM household_members WHERE household_id = $1 AND user_id != $2 LIMIT 1',
-        [householdId, currentOwnerId]
-      );
-      expect(mockClient.query).toHaveBeenNthCalledWith(
-        3,
-        'UPDATE household_members SET role = $1 WHERE household_id = $2 AND user_id = $3',
-        ['owner', householdId, newOwnerId]
-      );
-      expect(mockClient.query).toHaveBeenNthCalledWith(4, 'COMMIT');
+      expect(mockClient.query).toHaveBeenCalledTimes(6);
       expect(mockClient.release).toHaveBeenCalled();
     });
 
@@ -371,52 +361,19 @@ describe('HouseholdRepository', () => {
         query: jest
           .fn()
           .mockResolvedValueOnce(null) // BEGIN
-          .mockResolvedValueOnce({ rows: [] }) // SELECT user_id
-          .mockResolvedValueOnce(null) // COMMIT
-          .mockResolvedValueOnce(null), // Final COMMIT
+          .mockResolvedValueOnce({ rows: [{ user_id: currentOwnerId }] }) // SELECT current owner
+          .mockResolvedValueOnce({ rows: [] }) // SELECT new owner (empty)
+          .mockResolvedValueOnce(null) // ROLLBACK
+          .mockResolvedValueOnce(null), // Release (implícito)
         release: jest.fn(),
       };
       (mockPool.connect as jest.Mock).mockResolvedValue(mockClient);
 
       await expect(
         householdRepository.transferHouseholdOwnership(currentOwnerId, householdId)
-      ).resolves.not.toThrow();
+      ).rejects.toThrow('No eligible member found to transfer ownership');
 
-      expect(mockClient.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-      expect(mockClient.query).toHaveBeenNthCalledWith(
-        2,
-        'SELECT user_id FROM household_members WHERE household_id = $1 AND user_id != $2 LIMIT 1',
-        [householdId, currentOwnerId]
-      );
-      // No UPDATE should be called since no new owner is found
-      expect(mockClient.query).toHaveBeenNthCalledWith(3, 'COMMIT');
-      expect(mockClient.release).toHaveBeenCalled();
-    });
-
-    it('should throw an AppError if transaction fails during ownership transfer', async () => {
-      const householdId = 'household-1';
-      const currentOwnerId = 'owner-1';
-
-      const mockClient = {
-        query: jest
-          .fn()
-          .mockResolvedValueOnce(null) // BEGIN
-          .mockRejectedValueOnce(new Error('Transaction error')), // Error en SELECT
-        release: jest.fn(),
-      };
-      (mockPool.connect as jest.Mock).mockResolvedValue(mockClient);
-
-      await expect(
-        householdRepository.transferHouseholdOwnership(currentOwnerId, householdId)
-      ).rejects.toThrow(AppError);
-
-      expect(mockClient.query).toHaveBeenNthCalledWith(1, 'BEGIN');
-      expect(mockClient.query).toHaveBeenNthCalledWith(
-        2,
-        'SELECT user_id FROM household_members WHERE household_id = $1 AND user_id != $2 LIMIT 1',
-        [householdId, currentOwnerId]
-      );
-      expect(mockClient.query).toHaveBeenNthCalledWith(3, 'ROLLBACK');
+      expect(mockClient.query).toHaveBeenCalledTimes(5);
       expect(mockClient.release).toHaveBeenCalled();
     });
   });

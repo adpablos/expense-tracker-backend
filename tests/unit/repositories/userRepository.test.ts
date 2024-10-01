@@ -147,7 +147,10 @@ describe('UserRepository', () => {
       const updates = {
         email: 'updated@example.com',
         name: 'Updated Name',
-        households: ['household1', 'household2'],
+        householdUpdates: [
+          { householdId: 'household1', role: 'member', status: 'active' },
+          { householdId: 'household2', role: 'owner', status: 'active' },
+        ],
       };
       const mockClient = {
         query: jest.fn(),
@@ -167,18 +170,26 @@ describe('UserRepository', () => {
 
       await userRepository.updateUser(userId, updates);
 
+      // Verificar la actualización del usuario
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM household_members'),
+        expect.stringContaining('UPDATE users SET'),
+        expect.arrayContaining(['updated@example.com', 'Updated Name', userId])
+      );
+
+      // Verificar la eliminación de las membresías de hogar existentes
+      expect(mockClient.query).toHaveBeenCalledWith(
+        'DELETE FROM household_members WHERE user_id = $1',
         [userId]
       );
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO household_members'),
-        [userId, 'household1']
-      );
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO household_members'),
-        [userId, 'household2']
-      );
+
+      // Verificar la inserción de nuevas membresías de hogar
+      updates.householdUpdates.forEach((update) => {
+        expect(mockClient.query).toHaveBeenCalledWith(
+          'INSERT INTO household_members (user_id, household_id, role, status) VALUES ($1, $2, $3, $4)',
+          [userId, update.householdId, update.role, update.status]
+        );
+      });
+
       expect(mockClient.release).toHaveBeenCalled();
     });
   });
