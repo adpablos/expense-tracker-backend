@@ -124,9 +124,9 @@ export class UserService {
       await this.userRepository.deleteUser(id);
       logger.info('Deleted user', { id });
     } catch (error) {
-      logger.error('Error deleting user', { error });
+      logger.error('Error deleting user', { error, stack: (error as Error).stack });
       if (error instanceof AppError) throw error;
-      throw new AppError('Error deleting user', 500);
+      throw new AppError(`Error deleting user: ${(error as Error).message}`, 500);
     }
   }
 
