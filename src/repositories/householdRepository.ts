@@ -82,7 +82,7 @@ export class HouseholdRepository {
       });
     } catch (error) {
       logger.error('Error adding member to household', { error, householdMember });
-      throw new AppError('Error adding member to household', 500);
+      throw new AppError(`Error adding member to household: ${(error as Error).message}`, 500);
     }
   }
 
@@ -193,7 +193,7 @@ export class HouseholdRepository {
         logger.warn('Current user is not the owner', { householdId, currentOwnerId });
         await client.query('ROLLBACK');
         logger.debug('Transaction rolled back.');
-        return;
+        throw new AppError('Current user is not the owner', 400);
       }
 
       logger.debug('Finding new owner', { householdId, currentOwnerId });
@@ -203,31 +203,23 @@ export class HouseholdRepository {
       );
       logger.debug('New owner query result:', newOwnerResult.rows);
 
-      if (newOwnerResult.rows.length > 0) {
-        const newOwnerId = newOwnerResult.rows[0].user_id;
-        logger.debug(`Updating user ${newOwnerId} to OWNER...`, { householdId, newOwnerId });
-        const updateResult = await client.query(
-          'UPDATE household_members SET role = $1 WHERE household_id = $2 AND user_id = $3',
-          [ROLES.OWNER, householdId, newOwnerId]
-        );
-        logger.debug('🔄 Update result:', updateResult.rowCount, 'rows affected.');
-        logger.debug('Transferred household ownership', { householdId, newOwnerId });
-
-        logger.debug('🔍 Verifying the new OWNER assignment...');
-        const verifyNewOwner = await client.query(
-          'SELECT user_id, role FROM household_members WHERE household_id = $1 AND user_id = $2',
-          [householdId, newOwnerId]
-        );
-        logger.debug('Verify new owner:', verifyNewOwner.rows);
-
-        logger.debug(`✅ Transferred household ownership to user ${newOwnerId}.`);
-      } else {
+      if (newOwnerResult.rows.length === 0) {
         logger.warn('No eligible member found to transfer ownership', {
           householdId,
           currentOwnerId,
         });
+        await client.query('ROLLBACK');
         throw new AppError('No eligible member found to transfer ownership', 400);
       }
+
+      const newOwnerId = newOwnerResult.rows[0].user_id;
+      logger.debug(`Updating user ${newOwnerId} to OWNER...`, { householdId, newOwnerId });
+      const updateResult = await client.query(
+        'UPDATE household_members SET role = $1 WHERE household_id = $2 AND user_id = $3',
+        [ROLES.OWNER, householdId, newOwnerId]
+      );
+      logger.debug('🔄 Update result:', updateResult.rowCount, 'rows affected.');
+      logger.debug('Transferred household ownership', { householdId, newOwnerId });
 
       logger.debug('🗑️ Removing current OWNER from household...');
       const deleteResult = await client.query(
@@ -248,7 +240,11 @@ export class HouseholdRepository {
       });
       logger.error('❌ Error transferring household ownership:', error);
 
-      throw new AppError('Error transferring household ownership', 500);
+      if (error instanceof AppError) {
+        throw error;
+      } else {
+        throw new AppError('Error transferring household ownership', 500);
+      }
     } finally {
       client.release();
       logger.debug('Database client released.');
