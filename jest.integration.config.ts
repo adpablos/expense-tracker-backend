@@ -18,8 +18,8 @@ const config: Config.InitialOptions = {
       'ts-jest',
       {
         tsconfig: 'tsconfig.json',
-        diagnostics: false,
-        isolatedModules: true,
+        diagnostics: true,
+        isolatedModules: false,
       },
     ],
   },
