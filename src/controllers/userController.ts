@@ -1,4 +1,4 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
 import logger from '../config/logger';
@@ -6,7 +6,6 @@ import { User } from '../models/User';
 import { HouseholdService } from '../services/householdService';
 import { UserService } from '../services/userService';
 import { DI_TYPES } from '../types/di';
-import { ExtendedRequest } from '../types/express';
 import { AppError } from '../utils/AppError';
 
 @injectable()
@@ -16,7 +15,7 @@ export class UserController {
     @inject(DI_TYPES.HouseholdService) private householdService: HouseholdService
   ) {}
 
-  public getCurrentUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public getCurrentUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
       logger.debug('getCurrentUser called', {
         userId: req.user?.id,
@@ -50,7 +49,7 @@ export class UserController {
     }
   };
 
-  public registerUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public registerUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, name, auth_provider_id } = req.body;
 
@@ -75,7 +74,7 @@ export class UserController {
     }
   };
 
-  public updateUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public updateUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { email, name } = req.body;
       const updatedUser = await this.userService.updateUser(req.user!.id, { email, name });
@@ -85,7 +84,7 @@ export class UserController {
     }
   };
 
-  public deleteUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public deleteUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
       await this.userService.deleteUser(req.user!.id);
       res.status(204).send();
@@ -94,7 +93,7 @@ export class UserController {
     }
   };
 
-  public getUserHouseholds = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public getUserHouseholds = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const households = await this.householdService.getUserHouseholds(req.user!.id);
       res.json(households);

@@ -1,15 +1,14 @@
 // src/middleware/__tests__/responseLogger.test.ts
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 import logger from '../../../src/config/logger';
 import { responseLogger } from '../../../src/middleware/responseLogger';
-import { ExtendedRequest } from '../../../src/types/express';
 
 jest.mock('../../../src/config/logger');
 
 describe('responseLogger middleware', () => {
   it('debe registrar la respuesta saliente y llamar a next()', () => {
-    const req: Partial<ExtendedRequest> = {
+    const req: Partial<Request> = {
       method: 'GET',
       originalUrl: '/api/test',
       startTime: Date.now(),
@@ -23,7 +22,7 @@ describe('responseLogger middleware', () => {
 
     const next = jest.fn() as NextFunction;
 
-    responseLogger(req as ExtendedRequest, res as Response, next);
+    responseLogger(req as Request, res as Response, next);
 
     const responseBody = { message: 'Success' };
     res.send!(responseBody);

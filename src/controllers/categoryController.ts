@@ -1,16 +1,15 @@
-import { NextFunction, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { Category } from '../models/Category';
 import { CategoryService } from '../services/categoryService';
 import { DI_TYPES } from '../types/di';
-import { ExtendedRequest } from '../types/express';
 
 @injectable()
 export class CategoryController {
   constructor(@inject(DI_TYPES.CategoryService) private categoryService: CategoryService) {}
 
-  public getCategories = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public getCategories = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const categories = await this.categoryService.getAllCategories(req.currentHouseholdId!);
       res.json(categories);
@@ -19,7 +18,7 @@ export class CategoryController {
     }
   };
 
-  public addCategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public addCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name } = req.body;
       const newCategory = new Category(name, req.currentHouseholdId!);
@@ -30,7 +29,7 @@ export class CategoryController {
     }
   };
 
-  public updateCategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public updateCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { name } = req.body;
@@ -45,7 +44,7 @@ export class CategoryController {
     }
   };
 
-  public deleteCategory = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const forceDelete = req.query.force === 'true';

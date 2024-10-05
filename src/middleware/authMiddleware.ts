@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express';
 import { expressjwt, GetVerificationKey } from 'express-jwt';
 import { inject, injectable } from 'inversify';
 import jwksRsa from 'jwks-rsa';
@@ -7,13 +7,12 @@ import logger from '../config/logger';
 import { User } from '../models/User';
 import { UserService } from '../services/userService';
 import { DI_TYPES } from '../types/di';
-import { ExtendedRequest, ExtendedRequestHandler } from '../types/express';
 
 @injectable()
 export class AuthMiddleware {
   constructor(@inject(DI_TYPES.UserService) protected userService: UserService) {}
 
-  public authMiddleware: ExtendedRequestHandler = (req, res, next) => {
+  public authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     expressjwt({
       secret: jwksRsa.expressJwtSecret({
         cache: true,
@@ -38,7 +37,7 @@ export class AuthMiddleware {
     });
   };
 
-  public attachUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public attachUser = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.auth) {
       logger.error('No authentication token provided', {
         url: req.url,

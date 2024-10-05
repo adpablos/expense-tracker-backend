@@ -1,12 +1,12 @@
 // tests/unit/services/fileProcessors/ImageProcessor.test.ts
 import 'reflect-metadata';
 import { jest } from '@jest/globals';
+import { Request } from 'express';
 import { Container } from 'inversify';
 
 import { Expense } from '../../../../src/models/Expense';
 import { ImageProcessor } from '../../../../src/services/fileProcessors/ImageProcessor';
 import { DI_TYPES } from '../../../../src/types/di';
-import { ExtendedRequest } from '../../../../src/types/express';
 import { AppError } from '../../../../src/utils/AppError';
 import { createTestContainer } from '../../../testContainer';
 import { createMockExpense } from '../../mocks/objectFactories';
@@ -63,7 +63,7 @@ describe('ImageProcessor', () => {
     const mockRequest = {
       currentHouseholdId: 'household-id',
       user: { id: 'user-id' },
-    } as unknown as ExtendedRequest;
+    } as unknown as Request;
 
     const result = await imageProcessor.process(file, mockRequest);
 
@@ -97,7 +97,7 @@ describe('ImageProcessor', () => {
     const mockRequest = {
       currentHouseholdId: 'household-id',
       user: { id: 'user-id' },
-    } as unknown as ExtendedRequest;
+    } as unknown as Request;
 
     const result = await imageProcessor.process(file, mockRequest);
 
@@ -118,7 +118,7 @@ describe('ImageProcessor', () => {
     const mockRequest = {
       currentHouseholdId: 'household-id',
       user: { id: 'user-id' },
-    } as unknown as ExtendedRequest;
+    } as unknown as Request;
 
     await expect(imageProcessor.process(file, mockRequest)).rejects.toThrow(AppError);
     await expect(imageProcessor.process(file, mockRequest)).rejects.toThrow(
@@ -144,7 +144,7 @@ describe('ImageProcessor', () => {
     const mockRequest = {
       currentHouseholdId: 'household-id',
       user: { id: 'user-id' },
-    } as unknown as ExtendedRequest;
+    } as unknown as Request;
 
     await expect(imageProcessor.process(file, mockRequest)).rejects.toThrow(AppError);
     await expect(imageProcessor.process(file, mockRequest)).rejects.toThrow(

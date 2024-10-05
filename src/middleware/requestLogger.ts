@@ -1,10 +1,9 @@
 // src/middleware/requestLogger.ts
-import { NextFunction, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 import logger from '../config/logger';
-import { ExtendedRequest } from '../types/express';
 
-export const requestLogger = (req: ExtendedRequest, res: Response, next: NextFunction) => {
+export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   req.startTime = Date.now();
 
   const logData = {

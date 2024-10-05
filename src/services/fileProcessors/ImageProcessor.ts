@@ -1,9 +1,9 @@
 // src/services/fileProcessors/ImageProcessor.ts
+import { Request } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { Expense } from '../../models/Expense';
 import { DI_TYPES } from '../../types/di';
-import { ExtendedRequest } from '../../types/express';
 import { AppError } from '../../utils/AppError';
 import { encodeImage } from '../../utils/encodeImage';
 import { OpenAIService } from '../external/openaiService';
@@ -18,7 +18,7 @@ export class ImageProcessor implements FileProcessor {
     return file.mimetype.startsWith('image/');
   }
 
-  public async process(file: Express.Multer.File, req: ExtendedRequest): Promise<Expense | null> {
+  public async process(file: Express.Multer.File, req: Request): Promise<Expense | null> {
     if (!file) {
       throw new AppError('No file uploaded', 400);
     }

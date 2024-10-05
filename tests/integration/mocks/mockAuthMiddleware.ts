@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { injectable, inject, Container } from 'inversify';
 import { Pool } from 'pg';
 
@@ -7,7 +7,6 @@ import { AuthMiddleware } from '../../../src/middleware/authMiddleware';
 import { UserRepository } from '../../../src/repositories/userRepository';
 import { UserService } from '../../../src/services/userService';
 import { DI_TYPES } from '../../../src/types/di';
-import { ExtendedRequest } from '../../../src/types/express';
 import { TestData } from '../setup/testData';
 
 @injectable()
@@ -20,7 +19,7 @@ export class MockAuthMiddleware extends AuthMiddleware {
   }
 
   public authMiddleware = async (
-    req: ExtendedRequest,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -57,7 +56,7 @@ export class MockAuthMiddleware extends AuthMiddleware {
     }
   };
 
-  public attachUser = async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  public attachUser = async (req: Request, res: Response, next: NextFunction) => {
     if (req.auth && req.auth.sub) {
       const userRepository = new UserRepository(this.pool);
       const user = await userRepository.getUserByAuthProviderId(req.auth.sub);

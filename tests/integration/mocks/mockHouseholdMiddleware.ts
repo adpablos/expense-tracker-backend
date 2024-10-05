@@ -1,11 +1,10 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { injectable, inject, Container } from 'inversify';
 import { Pool } from 'pg';
 
 import { HouseholdMiddleware } from '../../../src/middleware/householdMiddleware';
 import { HouseholdService } from '../../../src/services/householdService';
 import { DI_TYPES } from '../../../src/types/di';
-import { ExtendedRequest, ExtendedRequestHandler } from '../../../src/types/express';
 import { AppError } from '../../../src/utils/AppError';
 import { TestData } from '../setup/testData';
 
@@ -33,11 +32,11 @@ export class MockHouseholdMiddleware extends HouseholdMiddleware {
     return this.testHouseholdId as string;
   }
 
-  public setCurrentHousehold: ExtendedRequestHandler = async (
-    req: ExtendedRequest,
+  public setCurrentHousehold = async (
+    req: Request,
     res: Response,
     next: NextFunction
-  ) => {
+  ): Promise<void> => {
     if (!req.user) {
       return next(new AppError('User not authenticated', 401));
     }
@@ -52,11 +51,11 @@ export class MockHouseholdMiddleware extends HouseholdMiddleware {
     }
   };
 
-  public ensureHouseholdSelected: ExtendedRequestHandler = async (
-    req: ExtendedRequest,
+  public ensureHouseholdSelected = async (
+    req: Request,
     res: Response,
     next: NextFunction
-  ) => {
+  ): Promise<void> => {
     if (!req.currentHouseholdId) {
       try {
         req.currentHouseholdId = await this.getTestHouseholdId();

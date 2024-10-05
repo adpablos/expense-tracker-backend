@@ -1,10 +1,10 @@
 // src/services/fileProcessors/AudioProcessor.ts
+import { Request } from 'express';
 import { inject, injectable } from 'inversify';
 
 import logger from '../../config/logger';
 import { Expense } from '../../models/Expense';
 import { DI_TYPES } from '../../types/di';
-import { ExtendedRequest } from '../../types/express';
 import { AppError } from '../../utils/AppError';
 import { OpenAIService } from '../external/openaiService';
 
@@ -24,7 +24,7 @@ export class AudioProcessor implements FileProcessor {
     return file.mimetype.startsWith('audio/');
   }
 
-  public async process(file: Express.Multer.File, req: ExtendedRequest): Promise<Expense | null> {
+  public async process(file: Express.Multer.File, req: Request): Promise<Expense | null> {
     if (!file) {
       throw new AppError('No file uploaded', 400);
     }

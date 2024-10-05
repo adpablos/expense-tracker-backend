@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from 'express';
 import { UnauthorizedError } from 'express-jwt';
 
 import logger from '../config/logger';
-import { ExtendedRequest } from '../types/express';
 import { AppError } from '../utils/AppError';
 
 interface DatabaseError extends Error {
@@ -10,14 +9,13 @@ interface DatabaseError extends Error {
 }
 
 export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
-  const extendedReq = req as ExtendedRequest;
   const logContext = {
-    method: extendedReq.method,
-    url: extendedReq.url,
-    params: extendedReq.params,
-    query: extendedReq.query,
-    body: extendedReq.body,
-    userId: extendedReq.user?.id,
+    method: req.method,
+    url: req.url,
+    params: req.params,
+    query: req.query,
+    body: req.body,
+    userId: req.user?.id,
     errorName: err.name,
     errorMessage: err.message,
     errorStack:

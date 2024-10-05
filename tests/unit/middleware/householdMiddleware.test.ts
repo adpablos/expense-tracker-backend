@@ -1,12 +1,11 @@
 import 'reflect-metadata';
 
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 import { HouseholdMiddleware } from '../../../src/middleware/householdMiddleware';
 import { Household } from '../../../src/models/Household';
 import { User } from '../../../src/models/User';
 import { HouseholdService } from '../../../src/services/householdService';
-import { ExtendedRequest } from '../../../src/types/express';
 import { AppError } from '../../../src/utils/AppError';
 
 jest.mock('../../../src/services/householdService');
@@ -14,7 +13,7 @@ jest.mock('../../../src/services/householdService');
 describe('HouseholdMiddleware', () => {
   let householdMiddleware: HouseholdMiddleware;
   let mockHouseholdService: jest.Mocked<HouseholdService>;
-  let mockRequest: Partial<ExtendedRequest>;
+  let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockNext: jest.MockedFunction<NextFunction>;
 
@@ -41,7 +40,7 @@ describe('HouseholdMiddleware', () => {
       mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(true);
 
       await householdMiddleware.setCurrentHousehold(
-        mockRequest as ExtendedRequest,
+        mockRequest as Request,
         mockResponse as Response,
         mockNext
       );
@@ -56,7 +55,7 @@ describe('HouseholdMiddleware', () => {
       mockHouseholdService.getDefaultHouseholdForUser.mockResolvedValue(mockHousehold);
 
       await householdMiddleware.setCurrentHousehold(
-        mockRequest as ExtendedRequest,
+        mockRequest as Request,
         mockResponse as Response,
         mockNext
       );
@@ -70,7 +69,7 @@ describe('HouseholdMiddleware', () => {
       mockHouseholdService.userHasAccessToHousehold.mockResolvedValue(false);
 
       await householdMiddleware.setCurrentHousehold(
-        mockRequest as ExtendedRequest,
+        mockRequest as Request,
         mockResponse as Response,
         mockNext
       );
@@ -84,7 +83,7 @@ describe('HouseholdMiddleware', () => {
       mockRequest.currentHouseholdId = 'household1';
 
       householdMiddleware.ensureHouseholdSelected(
-        mockRequest as ExtendedRequest,
+        mockRequest as Request,
         mockResponse as Response,
         mockNext
       );
@@ -94,7 +93,7 @@ describe('HouseholdMiddleware', () => {
 
     it('should call next with error if no household is selected', () => {
       householdMiddleware.ensureHouseholdSelected(
-        mockRequest as ExtendedRequest,
+        mockRequest as Request,
         mockResponse as Response,
         mockNext
       );

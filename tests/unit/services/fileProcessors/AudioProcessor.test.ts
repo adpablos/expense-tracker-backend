@@ -1,6 +1,7 @@
 // tests/unit/services/fileProcessors/AudioProcessor.test.ts
 import 'reflect-metadata';
 import { jest } from '@jest/globals';
+import { Request } from 'express';
 import { Container } from 'inversify';
 
 import { Expense } from '../../../../src/models/Expense';
@@ -8,7 +9,6 @@ import { User } from '../../../../src/models/User';
 import { AudioConverter } from '../../../../src/services/fileProcessors/AudioConverter';
 import { AudioProcessor } from '../../../../src/services/fileProcessors/AudioProcessor';
 import { DI_TYPES } from '../../../../src/types/di';
-import { ExtendedRequest } from '../../../../src/types/express';
 import { AppError } from '../../../../src/utils/AppError';
 import { createTestContainer } from '../../../testContainer';
 import { createMockExpense } from '../../mocks/objectFactories';
@@ -55,7 +55,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<ExtendedRequest> = {
+    const req: Partial<Request> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
@@ -78,7 +78,7 @@ describe('AudioProcessor', () => {
     mockOpenAIService.transcribeAudio!.mockResolvedValue(transcription);
     mockOpenAIService.analyzeTranscription!.mockResolvedValue(mockExpense as Expense);
 
-    const result = await audioProcessor.process(file, req as ExtendedRequest);
+    const result = await audioProcessor.process(file, req as Request);
 
     expect(mockAudioConverter.verifyAudio).toHaveBeenCalledWith('/path/to/audio.mp3');
     expect(mockAudioConverter.convertToWav).toHaveBeenCalledWith('/path/to/audio.mp3');
@@ -100,7 +100,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<ExtendedRequest> = {
+    const req: Partial<Request> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
@@ -127,7 +127,7 @@ describe('AudioProcessor', () => {
     mockOpenAIService.transcribeAudio!.mockResolvedValue(transcription);
     mockOpenAIService.analyzeTranscription!.mockResolvedValue(mockExpense as Expense);
 
-    const result = await audioProcessor.process(file, req as ExtendedRequest);
+    const result = await audioProcessor.process(file, req as Request);
 
     expect(mockTempFileHandler.createTempFile).toHaveBeenCalledWith(
       Buffer.from('mock audio content'),
@@ -152,13 +152,13 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<ExtendedRequest> = {
+    const req: Partial<Request> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
 
-    await expect(audioProcessor.process(file, req as ExtendedRequest)).rejects.toThrow(AppError);
-    await expect(audioProcessor.process(file, req as ExtendedRequest)).rejects.toThrow(
+    await expect(audioProcessor.process(file, req as Request)).rejects.toThrow(AppError);
+    await expect(audioProcessor.process(file, req as Request)).rejects.toThrow(
       'No file data available'
     );
     expect(mockTempFileHandler.createTempFile).not.toHaveBeenCalled();
@@ -172,15 +172,15 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<ExtendedRequest> = {
+    const req: Partial<Request> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
 
     mockAudioConverter.verifyAudio.mockRejectedValue(new AppError('Invalid audio file.', 400));
 
-    await expect(audioProcessor.process(file, req as ExtendedRequest)).rejects.toThrow(AppError);
-    await expect(audioProcessor.process(file, req as ExtendedRequest)).rejects.toThrow(
+    await expect(audioProcessor.process(file, req as Request)).rejects.toThrow(AppError);
+    await expect(audioProcessor.process(file, req as Request)).rejects.toThrow(
       'Invalid audio file.'
     );
     expect(mockTempFileHandler.deleteTempFiles).not.toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<ExtendedRequest> = {
+    const req: Partial<Request> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
@@ -203,8 +203,8 @@ describe('AudioProcessor', () => {
       new AppError('Error converting audio file.', 500)
     );
 
-    await expect(audioProcessor.process(file, req as ExtendedRequest)).rejects.toThrow(AppError);
-    await expect(audioProcessor.process(file, req as ExtendedRequest)).rejects.toThrow(
+    await expect(audioProcessor.process(file, req as Request)).rejects.toThrow(AppError);
+    await expect(audioProcessor.process(file, req as Request)).rejects.toThrow(
       'Error converting audio file.'
     );
     expect(mockTempFileHandler.deleteTempFiles).not.toHaveBeenCalled();

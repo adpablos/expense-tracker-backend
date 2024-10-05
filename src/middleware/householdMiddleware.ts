@@ -1,21 +1,16 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
 import logger from '../config/logger';
 import { HouseholdService } from '../services/householdService';
 import { DI_TYPES } from '../types/di';
-import { ExtendedRequest, ExtendedRequestHandler } from '../types/express';
 import { AppError } from '../utils/AppError';
 
 @injectable()
 export class HouseholdMiddleware {
   constructor(@inject(DI_TYPES.HouseholdService) private householdService: HouseholdService) {}
 
-  public setCurrentHousehold: ExtendedRequestHandler = async (
-    req: ExtendedRequest,
-    res: Response,
-    next: NextFunction
-  ) => {
+  public setCurrentHousehold = async (req: Request, res: Response, next: NextFunction) => {
     const householdId = req.header('X-Household-Id');
 
     if (!req.user) {
@@ -55,11 +50,7 @@ export class HouseholdMiddleware {
     }
   };
 
-  public ensureHouseholdSelected: ExtendedRequestHandler = (
-    req: ExtendedRequest,
-    res: Response,
-    next: NextFunction
-  ) => {
+  public ensureHouseholdSelected = (req: Request, res: Response, next: NextFunction) => {
     if (!req.currentHouseholdId) {
       return next(new AppError('No household selected', 400));
     }

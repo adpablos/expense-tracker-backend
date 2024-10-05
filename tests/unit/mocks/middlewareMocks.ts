@@ -1,9 +1,8 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 import { AuthMiddleware } from '../../../src/middleware/authMiddleware';
 import { HouseholdMiddleware } from '../../../src/middleware/householdMiddleware';
 import { User } from '../../../src/models/User';
-import { ExtendedRequest } from '../../../src/types/express';
 
 interface MockHouseholdService {
   userHasAccessToHousehold: (userId: string, householdId: string | undefined) => Promise<boolean>;
@@ -17,7 +16,7 @@ export const createMockAuthMiddleware = (
   userId: string = 'mock-user-id'
 ): MockedClassMethods<AuthMiddleware> => ({
   authMiddleware: jest.fn((req, res, next) => next()),
-  attachUser: jest.fn(async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  attachUser: jest.fn(async (req: Request, res: Response, next: NextFunction) => {
     req.user = new User('test@example.com', 'Test User', 'auth123456', userId, []);
     next();
     return Promise.resolve(undefined);
@@ -31,7 +30,7 @@ export const createMockHouseholdMiddleware = (
     skipAccessCheck?: boolean;
   } = {}
 ): MockedClassMethods<HouseholdMiddleware> => ({
-  setCurrentHousehold: jest.fn(async (req: ExtendedRequest, res: Response, next: NextFunction) => {
+  setCurrentHousehold: jest.fn(async (req: Request, res: Response, next: NextFunction) => {
     if (options.skipAccessCheck) {
       req.currentHouseholdId = req.header('X-Household-Id') || 'default-household-id';
       next();
@@ -57,7 +56,7 @@ export const createMockHouseholdMiddleware = (
       res.status(403).json({ message: 'User does not have access to this household' });
     }
   }) as jest.Mock<Promise<void>>,
-  ensureHouseholdSelected: jest.fn((req: ExtendedRequest, res: Response, next: NextFunction) => {
+  ensureHouseholdSelected: jest.fn((req: Request, res: Response, next: NextFunction) => {
     if (!req.currentHouseholdId && !options.skipAccessCheck) {
       res.status(400).json({ message: 'No household selected' });
     } else {
