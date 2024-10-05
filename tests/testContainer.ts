@@ -2,16 +2,13 @@ import 'reflect-metadata';
 import { Container } from 'inversify';
 import { Pool } from 'pg';
 
-// Importa todos los servicios necesarios
-
+import logger from '../src/config/logger';
 import { CategoryRepository } from '../src/repositories/categoryRepository';
 import { ExpenseRepository } from '../src/repositories/expenseRepository';
 import { HouseholdRepository } from '../src/repositories/householdRepository';
 import { SubcategoryRepository } from '../src/repositories/subcategoryRepository';
 import { UserRepository } from '../src/repositories/userRepository';
 import { DI_TYPES } from '../src/types/di';
-
-// Importaciones de mocks
 
 import { mockAuthMiddleware } from './integration/mocks/mockAuthMiddleware';
 import {
@@ -136,7 +133,7 @@ export function createRepositoryTestContainer() {
 export async function createIntegrationTestContainer() {
   const container = new Container();
 
-  // Vincula todos los tipos definidos en DI_TYPES
+  // Bind all types defined in DI_TYPES
   for (const [key, value] of Object.entries(DI_TYPES)) {
     try {
       const paths = [
@@ -153,20 +150,21 @@ export async function createIntegrationTestContainer() {
             container.bind(value).to(module[key]);
             break;
           } else if (module.default) {
-            // Para los middleware que exportan una función por defecto
+            // For middleware that export a default function
             container.bind(value).toFunction(module.default);
             break;
           }
         } catch (error) {
-          // Ignorar errores de importación y continuar con el siguiente path
+          // Log the error and continue with the next path
+          logger.debug(`Error importing module from ${path}: ${error}`);
         }
       }
     } catch (error) {
-      console.warn(`No se pudo vincular automáticamente: ${key}`);
+      logger.warn(`Unable to automatically bind: ${key}. Error: ${error}`);
     }
   }
 
-  // Vinculaciones especiales que no siguen el patrón estándar
+  // Special bindings that don't follow the standard pattern
   container.bind<Pool>(DI_TYPES.DbPool).toConstantValue(
     new Pool({
       user: process.env.DB_USER,
@@ -177,7 +175,7 @@ export async function createIntegrationTestContainer() {
     })
   );
 
-  // Importar y vincular middleware específicos
+  // Import and bind specific middleware
   const middlewarePaths = [
     '../src/middleware/requestLogger',
     '../src/middleware/responseLogger',
@@ -185,18 +183,22 @@ export async function createIntegrationTestContainer() {
   ];
 
   for (const path of middlewarePaths) {
-    const module = await import(path);
-    const middlewareName = path.split('/').pop() as keyof typeof DI_TYPES;
-    if (module.default) {
-      container.bind(DI_TYPES[middlewareName]).toFunction(module.default);
+    try {
+      const module = await import(path);
+      const middlewareName = path.split('/').pop() as keyof typeof DI_TYPES;
+      if (module.default) {
+        container.bind(DI_TYPES[middlewareName]).toFunction(module.default);
+      }
+    } catch (error) {
+      logger.warn(`Error binding middleware from ${path}: ${error}`);
     }
   }
 
-  // Usar mocks para AuthMiddleware y HouseholdMiddleware
+  // Use mocks for AuthMiddleware and HouseholdMiddleware
   mockAuthMiddleware(container);
-  // Aquí deberías añadir un mockHouseholdMiddleware similar si lo necesitas
+  // TODO: Add mockHouseholdMiddleware here if needed
 
-  // Asegúrate de vincular todos los repositorios necesarios
+  // Ensure all necessary repositories are bound
   container.bind<UserRepository>(DI_TYPES.UserRepository).to(UserRepository);
   container.bind<HouseholdRepository>(DI_TYPES.HouseholdRepository).to(HouseholdRepository);
   container.bind<CategoryRepository>(DI_TYPES.CategoryRepository).to(CategoryRepository);

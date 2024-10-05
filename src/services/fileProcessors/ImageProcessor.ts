@@ -41,7 +41,7 @@ export class ImageProcessor implements FileProcessor {
       } else {
         throw new AppError('No file data available', 400);
       }
-    } catch (error) {
+    } catch {
       throw new AppError('Error processing image file', 400);
     }
 

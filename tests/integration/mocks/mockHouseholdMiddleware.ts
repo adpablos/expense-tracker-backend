@@ -59,7 +59,7 @@ export class MockHouseholdMiddleware extends HouseholdMiddleware {
     if (!req.currentHouseholdId) {
       try {
         req.currentHouseholdId = await this.getTestHouseholdId();
-      } catch (error) {
+      } catch {
         return next(new AppError('No household selected', 400));
       }
     }

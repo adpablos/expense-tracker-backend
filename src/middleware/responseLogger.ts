@@ -19,13 +19,13 @@ export const responseLogger = (req: Request, res: Response, next: NextFunction) 
     if (typeof logData.body === 'object') {
       try {
         logData.body = JSON.stringify(logData.body);
-      } catch (error) {
-        logData.body = '[Cuerpo no serializable]';
+      } catch {
+        logData.body = '[Non-serializable body]';
       }
     }
 
     if (typeof logData.body === 'string' && logData.body.length > 1000) {
-      logData.body = logData.body.substring(0, 1000) + '... [truncated]';
+      logData.body = `${logData.body.substring(0, 1000)}... [truncated]`;
     }
 
     logger.info(`Outgoing response: ${res.statusCode} ${req.method} ${req.originalUrl}`, logData);

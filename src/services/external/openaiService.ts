@@ -116,7 +116,7 @@ export class OpenAIService {
 
       const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
       return await this.extractExpenseFromFunctionCall(functionCall, householdId, userId);
-    } catch (error) {
+    } catch {
       throw new AppError('Error processing receipt', 500);
     }
   }
@@ -135,7 +135,7 @@ export class OpenAIService {
       });
 
       return transcription.text;
-    } catch (error) {
+    } catch {
       throw new AppError('Error transcribing audio', 500);
     }
   }
@@ -208,7 +208,7 @@ export class OpenAIService {
 
       const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
       return await this.extractExpenseFromFunctionCall(functionCall, householdId, userId);
-    } catch (error) {
+    } catch {
       throw new AppError('Error analyzing transcription', 500);
     }
   }
