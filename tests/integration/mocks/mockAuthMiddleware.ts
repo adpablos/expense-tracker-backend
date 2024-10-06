@@ -4,15 +4,16 @@ import { Pool } from 'pg';
 
 import logger from '../../../src/config/logger';
 import { AuthMiddleware } from '../../../src/middleware/authMiddleware';
-import { UserRepository } from '../../../src/repositories/userRepository';
 import { UserService } from '../../../src/services/userService';
 import { DI_TYPES } from '../../../src/types/di';
 import { TestData } from '../setup/testData';
 
+// Importa explícitamente la extensión de Request
+
 @injectable()
 export class MockAuthMiddleware extends AuthMiddleware {
   constructor(
-    @inject(DI_TYPES.UserService) userService: UserService,
+    @inject(DI_TYPES.UserService) protected userService: UserService,
     @inject(DI_TYPES.DbPool) private pool: Pool
   ) {
     super(userService);
@@ -46,22 +47,31 @@ export class MockAuthMiddleware extends AuthMiddleware {
           sub: `auth0|${authProviderIdSuffix}`,
           email: `user-${authProviderIdSuffix}@example.com`,
         };
+        next();
       } else {
         res.status(401).json({ message: 'Invalid token' });
         return;
       }
-      next();
     } else {
       res.status(401).json({ message: 'Unauthorized' });
     }
   };
 
-  public attachUser = async (req: Request, res: Response, next: NextFunction) => {
-    if (req.auth && req.auth.sub) {
-      const userRepository = new UserRepository(this.pool);
-      const user = await userRepository.getUserByAuthProviderId(req.auth.sub);
+  public attachUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({ message: 'No authorization header' });
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
+    const authProviderId = token.split('-')[2] || 'auth0|123456';
+
+    try {
+      const user = await this.userService.getUserByAuthProviderId(authProviderId);
       if (!user) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'User not found' });
+        return;
       }
       req.user = user;
       logger.debug('Attached user to request', {
@@ -70,8 +80,9 @@ export class MockAuthMiddleware extends AuthMiddleware {
         authProviderId: req.user.authProviderId,
       });
       next();
-    } else {
-      res.status(401).json({ message: 'Unauthorized' });
+    } catch (error) {
+      logger.error('Error in mock auth middleware', { error });
+      res.status(500).json({ message: 'Internal server error' });
     }
   };
 }
