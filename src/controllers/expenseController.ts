@@ -87,7 +87,7 @@ export class ExpenseController {
         req.user!.id
       );
       if (!updatedExpense) {
-        return res.status(404).json({ message: 'Expense not found' });
+        res.status(404).json({ message: 'Expense not found' });
       }
       res.json(updatedExpense);
     } catch (error) {

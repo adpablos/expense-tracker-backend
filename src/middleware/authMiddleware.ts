@@ -12,7 +12,11 @@ import { DI_TYPES } from '../types/di';
 export class AuthMiddleware {
   constructor(@inject(DI_TYPES.UserService) protected userService: UserService) {}
 
-  public authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  public authMiddleware: (req: Request, res: Response, next: NextFunction) => void = (
+    req,
+    res,
+    next
+  ) => {
     expressjwt({
       secret: jwksRsa.expressJwtSecret({
         cache: true,
@@ -37,13 +41,18 @@ export class AuthMiddleware {
     });
   };
 
-  public attachUser = async (req: Request, res: Response, next: NextFunction) => {
+  public attachUser: (req: Request, res: Response, next: NextFunction) => Promise<void> = async (
+    req,
+    res,
+    next
+  ) => {
     if (!req.auth) {
       logger.error('No authentication token provided', {
         url: req.url,
         method: req.method,
       });
-      return res.status(401).json({ message: 'No authentication token provided' });
+      res.status(401).json({ message: 'No authentication token provided' });
+      return;
     }
 
     try {
@@ -54,7 +63,8 @@ export class AuthMiddleware {
           url: req.url,
           method: req.method,
         });
-        return res.status(403).json({ message: 'User not registered in the system' });
+        res.status(403).json({ message: 'User not registered in the system' });
+        return;
       }
 
       req.user = new User(userData.email, userData.name, userData.authProviderId);

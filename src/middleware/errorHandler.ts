@@ -8,7 +8,12 @@ interface DatabaseError extends Error {
   code?: string;
 }
 
-export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler = (
+  err: Error,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void => {
   const logContext = {
     method: req.method,
     url: req.url,
@@ -27,29 +32,32 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
   // AppError
   if (err instanceof AppError) {
     logger.error('AppError:', { ...logContext, statusCode: err.statusCode });
-    return res.status(err.statusCode).json({
+    res.status(err.statusCode).json({
       status: 'error',
       message: err.message,
     });
+    return;
   }
 
   // UnauthorizedError
   if (err instanceof UnauthorizedError) {
     logger.error('UnauthorizedError:', logContext);
-    return res.status(401).json({
+    res.status(401).json({
       status: 'error',
       message: 'No authorization token was found',
     });
+    return;
   }
 
   // Database errors
   if (err.name === 'DatabaseError') {
     const dbError = err as DatabaseError;
     logger.error('DatabaseError:', { ...logContext, code: dbError.code });
-    return res.status(500).json({
+    res.status(500).json({
       status: 'error',
       message: 'A database error occurred',
     });
+    return;
   }
 
   // Unexpected error
