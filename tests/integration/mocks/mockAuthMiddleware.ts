@@ -25,8 +25,12 @@ export class MockAuthMiddleware extends AuthMiddleware {
     next: NextFunction
   ): Promise<void> => {
     const authHeader = req.headers.authorization;
+    logger.debug('Auth middleware called', { authHeader });
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
+      logger.debug('Token extracted', { token });
+
       if (token === 'fake-token') {
         const client = await this.pool.connect();
         try {
@@ -36,40 +40,51 @@ export class MockAuthMiddleware extends AuthMiddleware {
             sub: testData.testUser.auth_provider_id,
             email: testData.testUser.email,
           };
+          logger.debug('Auth object set', { auth: req.auth });
           next();
         } finally {
           client.release();
         }
         return;
       } else if (token.startsWith('fake-token-')) {
-        const authProviderIdSuffix = token.split('-')[2];
+        const authProviderId = token.split('-')[2];
+        logger.debug('Auth provider ID extracted', { authProviderId });
+
         req.auth = {
-          sub: `auth0|${authProviderIdSuffix}`,
-          email: `user-${authProviderIdSuffix}@example.com`,
+          sub: authProviderId,
+          email: `user-${authProviderId.split('|')[1]}@example.com`,
         };
+        logger.debug('Auth object set', { auth: req.auth });
         next();
       } else {
+        logger.warn('Invalid token', { token });
         res.status(401).json({ message: 'Invalid token' });
         return;
       }
     } else {
+      logger.warn('Unauthorized request', { authHeader });
       res.status(401).json({ message: 'Unauthorized' });
     }
   };
 
   public attachUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.headers.authorization;
+    logger.debug('Attach user called', { authHeader });
+
     if (!authHeader) {
+      logger.warn('No authorization header');
       res.status(401).json({ message: 'No authorization header' });
       return;
     }
 
     const token = authHeader.split(' ')[1];
-    const authProviderId = token.split('-')[2] || 'auth0|123456';
+    const authProviderId = token.startsWith('fake-token-') ? token.split('-')[2] : 'auth0|123456';
+    logger.debug('Auth provider ID for user lookup', { authProviderId });
 
     try {
       const user = await this.userService.getUserByAuthProviderId(authProviderId);
       if (!user) {
+        logger.warn('User not found', { authProviderId });
         res.status(401).json({ message: 'User not found' });
         return;
       }

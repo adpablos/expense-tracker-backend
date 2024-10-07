@@ -314,21 +314,23 @@ describe('Users API Integration Tests', () => {
 
       // Create a new user without households using the UserRepository
       const userRepository = container.get<UserRepository>(DI_TYPES.UserRepository);
-      await userRepository.createUser(
+      const newUser = await userRepository.createUser(
         new User('nohousehold@example.com', 'No Household User', 'auth0|777888999')
       );
 
       // Use the auth provider ID to simulate authentication
-      const authProviderIdSuffix = '777888999';
+      const authProviderId = newUser.authProviderId;
+      logger.debug('New user created for test', { userId: newUser.id, authProviderId });
 
       // Make the request with a token that simulates being this new user
       const response = await request(app)
         .get('/api/users/me/households')
-        .set('Authorization', `Bearer fake-token-${authProviderIdSuffix}`);
+        .set('Authorization', `Bearer fake-token-${authProviderId}`);
 
-      logger.info('Response received', {
+      logger.debug('Response received', {
         status: response.status,
         body: response.body,
+        headers: response.headers,
       });
 
       expect(response.status).toBe(200);
