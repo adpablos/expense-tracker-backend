@@ -8,15 +8,18 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Debug Expense Tracker",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}/src/index.ts",
-            "preLaunchTask": "tsc: build - tsconfig.json",
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ]
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/ts-node",
+            "args": ["--files", "${workspaceFolder}/src/index.ts"],
+            "env": {
+                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+            },
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+            "console": "integratedTerminal"
         },
         {
             "type": "node",
@@ -53,6 +56,20 @@
             ],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
+          },
+          {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug with Nodemon",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/nodemon",
+            "program": "${workspaceFolder}/src/index.ts",
+            "restart": true,
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "args": ["--exec", "node", "--loader", "ts-node/esm"],
+            "env": {
+                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+            }
           }
     ],
     "inputs": [
