@@ -1,10 +1,10 @@
-// src/types/express/index.d.ts
+// global.d.ts
 
-import { User } from '../../models/User';
+import { User } from './src/models/User';
 
 declare global {
   namespace Express {
-    export interface Request {
+    interface Request {
       auth?: {
         sub: string;
         email: string;

@@ -16,15 +16,8 @@
     "forceConsistentCasingInFileNames": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "types": [
-      "node",
-      "jest",
-      "supertest",
-      "express"
-    ],
-    "typeRoots": ["./node_modules/@types", "./src/types"],
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "tests/**/*", "src/types/**/*"],
+  "include": ["src/**/*", "tests/**/*", "global.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
