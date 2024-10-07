@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { User } from '../models/User';
 import { HouseholdService } from '../services/householdService';
 import { UserService } from '../services/userService';
-import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

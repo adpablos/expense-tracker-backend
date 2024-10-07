@@ -1,9 +1,9 @@
 import { injectable, inject } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { Expense } from '../models/Expense';
 import { ExpenseRepository } from '../repositories/expenseRepository';
-import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 import { NotificationService } from './external/notificationService';

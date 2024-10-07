@@ -1,11 +1,12 @@
 import { injectable, inject } from 'inversify';
 import { Pool, PoolClient } from 'pg';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { Category } from '../models/Category';
-import { DI_TYPES } from '../config/di';
-import { DatabaseError } from './errors';
 import { AppError } from '../utils/AppError';
+
+import { DatabaseError } from './errors';
 
 @injectable()
 export class CategoryRepository {

@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { HouseholdService } from '../services/householdService';
-import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

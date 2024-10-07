@@ -1,9 +1,9 @@
 import { injectable, inject } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { Category } from '../models/Category';
 import { CategoryRepository } from '../repositories/categoryRepository';
-import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 import { NotificationService } from './external/notificationService';

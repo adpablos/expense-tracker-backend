@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import { Subcategory } from '../models/Subcategory';
 import { SubcategoryService } from '../services/subcategoryService';
-import { DI_TYPES } from '../config/di';
 
 @injectable()
 export class SubcategoryController {

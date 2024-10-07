@@ -1,7 +1,7 @@
 import { injectable, inject } from 'inversify';
 
-import logger from '../../config/logger';
 import { DI_TYPES } from '../../config/di';
+import logger from '../../config/logger';
 import { AppError } from '../../utils/AppError';
 import { HouseholdService } from '../householdService';
 

@@ -1,5 +1,6 @@
 import { injectable, inject } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { ROLES } from '../constants';
 import { Household } from '../models/Household';
@@ -7,7 +8,6 @@ import { User } from '../models/User';
 import { HouseholdRepository } from '../repositories/householdRepository';
 import { UserRepository } from '../repositories/userRepository';
 import { UserHouseholdTransactionCoordinator } from '../transaction-coordinators/userHouseholdTransactionCoordinator';
-import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()
