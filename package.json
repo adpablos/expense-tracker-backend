@@ -7,7 +7,7 @@
     "check-docker": "docker info || (echo 'Docker is not runnint. Starting Colima...' && colima start)",
     "init-db": "ts-node scripts/init-db.ts",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
+    "dev": "ts-node --files src/index.ts",
     "build": "tsc",
     "test:unit": "jest --config jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter",
     "test:unit:specific": "jest --config jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter --",
