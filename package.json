@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "check-docker": "docker info || (echo 'Docker is not runnint. Starting Colima...' && colima start)",
     "init-db": "ts-node scripts/init-db.ts",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
@@ -11,8 +12,8 @@
     "test:unit": "jest --config jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter",
     "test:unit:specific": "jest --config jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter --",
     "test:coverage": "jest --config jest.unit.config.ts --coverage",
-    "test:integration": "docker-compose -f docker-compose.test.yml up -d --force-recreate && sleep 2 && jest --config jest.integration.config.ts --runInBand --detectOpenHandles --reporters=default --reporters=jest-summary-reporter",
-    "test:integration:specific": "npm run test:integration -- --testPathPattern",
+    "test:integration": "npm run check-docker && docker-compose -f docker-compose.test.yml up -d --force-recreate && sleep 2 && jest --config jest.integration.config.ts --runInBand --detectOpenHandles --reporters=default --reporters=jest-summary-reporter",
+    "test:integration:specific": "npm run test:integration -- -t",
     "test:integration:cleanup": "docker-compose -f docker-compose.test.yml down",
     "test": "npm run test:unit && npm run test:integration && npm run test:integration:cleanup",
     "export-openapi": "ts-node scripts/export-openapi.ts",
