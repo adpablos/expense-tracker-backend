@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { createApp } from '../../src/app';
 import { Subcategory } from '../../src/models/Subcategory';
-import { DI_TYPES } from '../../src/types/di';
+import { DI_TYPES } from '../../src/config/di';
 
 import { mockMiddlewares } from './mocks/mockMiddlewares';
 import { container } from './setup/jest.setup';

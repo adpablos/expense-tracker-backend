@@ -3,7 +3,7 @@ import { Container } from 'inversify';
 
 import { UserController } from '../controllers/userController';
 import { AuthMiddleware } from '../middleware/authMiddleware';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 
 export default function userRoutes(container: Container) {
   const router = express.Router();

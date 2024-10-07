@@ -1,10 +1,10 @@
 import express from 'express';
 import { Container } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import { CategoryController } from '../controllers/categoryController';
 import { AuthMiddleware } from '../middleware/authMiddleware';
 import { HouseholdMiddleware } from '../middleware/householdMiddleware';
-import { DI_TYPES } from '../types/di';
 
 export default function (container: Container) {
   const router = express.Router();

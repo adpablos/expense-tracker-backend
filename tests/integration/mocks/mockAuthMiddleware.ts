@@ -2,10 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { injectable, inject, Container } from 'inversify';
 import { Pool } from 'pg';
 
+import { DI_TYPES } from '../../../src/config/di';
 import logger from '../../../src/config/logger';
 import { AuthMiddleware } from '../../../src/middleware/authMiddleware';
 import { UserService } from '../../../src/services/userService';
-import { DI_TYPES } from '../../../src/types/di';
 import { TestData } from '../setup/testData';
 
 // Importa explícitamente la extensión de Request

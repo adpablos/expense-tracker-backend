@@ -1,11 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { DI_TYPES } from '../config/di';
 import { Expense } from '../models/Expense';
 import { ExpenseService } from '../services/expenseService';
 import { OpenAIService } from '../services/external/openaiService';
 import { FileProcessorFactory } from '../services/fileProcessors/FileProcessorFactory';
-import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

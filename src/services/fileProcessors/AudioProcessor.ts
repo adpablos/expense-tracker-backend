@@ -4,7 +4,7 @@ import { inject, injectable } from 'inversify';
 
 import logger from '../../config/logger';
 import { Expense } from '../../models/Expense';
-import { DI_TYPES } from '../../types/di';
+import { DI_TYPES } from '../../config/di';
 import { AppError } from '../../utils/AppError';
 import { OpenAIService } from '../external/openaiService';
 

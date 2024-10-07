@@ -4,10 +4,10 @@ import { Container } from 'inversify';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { SubcategoryController } from '../../../src/controllers/subcategoryController';
 import { errorHandler } from '../../../src/middleware/errorHandler';
 import subcategoryRoutes from '../../../src/routes/subcategoryRoutes';
-import { DI_TYPES } from '../../../src/types/di';
 import { AppError } from '../../../src/utils/AppError';
 import { createMockAuthMiddleware, createMockHouseholdMiddleware } from '../mocks/middlewareMocks';
 import { mockSubcategoryService, mockHouseholdService } from '../mocks/serviceMocks';

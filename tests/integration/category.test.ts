@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createApp } from '../../src/app';
 import logger from '../../src/config/logger';
 import { Category } from '../../src/models/Category';
-import { DI_TYPES } from '../../src/types/di';
+import { DI_TYPES } from '../../src/config/di';
 
 import { logDatabaseState } from './helpers';
 import { mockMiddlewares } from './mocks/mockMiddlewares';

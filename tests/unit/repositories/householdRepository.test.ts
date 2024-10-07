@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { Pool, PoolClient } from 'pg';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { Household } from '../../../src/models/Household';
 import { HouseholdMember } from '../../../src/models/HouseholdMember';
 import { HouseholdRepository } from '../../../src/repositories/householdRepository';
-import { DI_TYPES } from '../../../src/types/di';
 import { AppError } from '../../../src/utils/AppError';
 import { createRepositoryTestContainer } from '../../testContainer';
 

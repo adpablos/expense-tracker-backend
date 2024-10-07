@@ -9,11 +9,11 @@ import multer from 'multer';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { ExpenseController } from '../../../src/controllers/expenseController';
 import { errorHandler } from '../../../src/middleware/errorHandler';
 import { Expense } from '../../../src/models/Expense'; // Importación añadida
 import expenseRoutes from '../../../src/routes/expenseRoutes';
-import { DI_TYPES } from '../../../src/types/di';
 import { AppError } from '../../../src/utils/AppError';
 import { encodeImage } from '../../../src/utils/encodeImage';
 import { createMockAuthMiddleware, createMockHouseholdMiddleware } from '../mocks/middlewareMocks';

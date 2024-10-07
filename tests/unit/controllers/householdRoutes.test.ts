@@ -4,11 +4,11 @@ import { Container } from 'inversify';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { HouseholdController } from '../../../src/controllers/householdController';
 import { errorHandler } from '../../../src/middleware/errorHandler';
 import { User } from '../../../src/models/User';
 import householdRoutes from '../../../src/routes/householdRoutes';
-import { DI_TYPES } from '../../../src/types/di';
 import { AppError } from '../../../src/utils/AppError';
 import { createMockAuthMiddleware, createMockHouseholdMiddleware } from '../mocks/middlewareMocks';
 import {

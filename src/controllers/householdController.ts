@@ -7,7 +7,7 @@ import { User } from '../models/User';
 import { NotificationService } from '../services/external/notificationService';
 import { HouseholdService } from '../services/householdService';
 import { UserService } from '../services/userService';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

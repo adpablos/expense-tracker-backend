@@ -3,7 +3,7 @@ import { inject, injectable } from 'inversify';
 
 import { Subcategory } from '../models/Subcategory';
 import { SubcategoryService } from '../services/subcategoryService';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 
 @injectable()
 export class SubcategoryController {

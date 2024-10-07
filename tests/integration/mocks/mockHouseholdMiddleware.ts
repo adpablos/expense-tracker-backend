@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 
 import { HouseholdMiddleware } from '../../../src/middleware/householdMiddleware';
 import { HouseholdService } from '../../../src/services/householdService';
-import { DI_TYPES } from '../../../src/types/di';
+import { DI_TYPES } from '../../../src/config/di';
 import { AppError } from '../../../src/utils/AppError';
 import { TestData } from '../setup/testData';
 

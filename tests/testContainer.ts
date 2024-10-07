@@ -8,7 +8,7 @@ import { ExpenseRepository } from '../src/repositories/expenseRepository';
 import { HouseholdRepository } from '../src/repositories/householdRepository';
 import { SubcategoryRepository } from '../src/repositories/subcategoryRepository';
 import { UserRepository } from '../src/repositories/userRepository';
-import { DI_TYPES } from '../src/types/di';
+import { DI_TYPES } from '../src/config/di';
 
 import { mockAuthMiddleware } from './integration/mocks/mockAuthMiddleware';
 import {

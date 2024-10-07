@@ -1,9 +1,9 @@
 import { injectable, inject } from 'inversify';
 import { Pool, PoolClient } from 'pg';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { Expense } from '../models/Expense';
-import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
 interface ExpenseFilters {

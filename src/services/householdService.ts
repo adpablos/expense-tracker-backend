@@ -6,7 +6,7 @@ import { Household } from '../models/Household';
 import { HouseholdMember } from '../models/HouseholdMember';
 import { User } from '../models/User';
 import { HouseholdRepository } from '../repositories/householdRepository';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

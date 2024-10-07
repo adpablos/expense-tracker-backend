@@ -4,10 +4,10 @@ import express from 'express';
 import { Container } from 'inversify';
 import multer from 'multer';
 
+import { DI_TYPES } from '../config/di';
 import { ExpenseController } from '../controllers/expenseController';
 import { AuthMiddleware } from '../middleware/authMiddleware';
 import { HouseholdMiddleware } from '../middleware/householdMiddleware';
-import { DI_TYPES } from '../types/di';
 import { AppError } from '../utils/AppError';
 
 /**

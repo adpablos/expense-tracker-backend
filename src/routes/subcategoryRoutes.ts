@@ -4,7 +4,7 @@ import { Container } from 'inversify';
 import { SubcategoryController } from '../controllers/subcategoryController';
 import { AuthMiddleware } from '../middleware/authMiddleware';
 import { HouseholdMiddleware } from '../middleware/householdMiddleware';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 
 export default function (container: Container) {
   const router = express.Router();

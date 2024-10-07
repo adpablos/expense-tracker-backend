@@ -3,6 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import { Container } from 'inversify';
 
+import { DI_TYPES } from './config/di';
 import { errorHandler } from './middleware/errorHandler';
 import authHelperRoutes from './routes/authHelperRoutes';
 import categoryRoutes from './routes/categoryRoutes';
@@ -11,7 +12,6 @@ import householdRoutes from './routes/householdRoutes';
 import subcategoryRoutes from './routes/subcategoryRoutes';
 import userRoutes from './routes/userRoutes';
 import setupSwagger from './swagger';
-import { DI_TYPES } from './types/di';
 import { AppError } from './utils/AppError';
 
 export interface AppRoutes {

@@ -3,8 +3,8 @@ import { Pool, PoolClient } from 'pg';
 
 import logger from '../config/logger';
 import { User } from '../models/User';
-import { DI_TYPES } from '../types/di';
-import { DatabaseError } from '../types/errors';
+import { DI_TYPES } from '../config/di';
+import { DatabaseError } from './errors';
 import { AppError } from '../utils/AppError';
 
 @injectable()

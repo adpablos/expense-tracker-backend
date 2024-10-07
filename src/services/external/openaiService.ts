@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 
 import clientOpenAI from '../../config/openaiConfig';
 import { Expense } from '../../models/Expense';
-import { DI_TYPES } from '../../types/di';
+import { DI_TYPES } from '../../config/di';
 import { AppError } from '../../utils/AppError';
 import { CategoryHierarchyService } from '../categoryHierarchyService';
 import { ExpenseService } from '../expenseService';

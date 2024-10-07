@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { Category } from '../../../src/models/Category';
 import { CategoryRepository } from '../../../src/repositories/categoryRepository';
-import { DI_TYPES } from '../../../src/types/di';
 import { AppError } from '../../../src/utils/AppError';
 import { createRepositoryTestContainer } from '../../testContainer';
 

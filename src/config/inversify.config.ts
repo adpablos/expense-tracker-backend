@@ -28,9 +28,9 @@ import { HouseholdService } from '../services/householdService';
 import { SubcategoryService } from '../services/subcategoryService';
 import { UserService } from '../services/userService';
 import { UserHouseholdTransactionCoordinator } from '../transaction-coordinators/userHouseholdTransactionCoordinator';
-import { DI_TYPES } from '../types/di';
 
 import pool from './db'; // Importa el pool de base de datos
+import { DI_TYPES } from './di';
 
 const container = new Container();
 

@@ -33,7 +33,7 @@ import { HouseholdService } from '../../../src/services/householdService';
 import { SubcategoryService } from '../../../src/services/subcategoryService';
 import { UserService } from '../../../src/services/userService';
 import { UserHouseholdTransactionCoordinator } from '../../../src/transaction-coordinators/userHouseholdTransactionCoordinator';
-import { DI_TYPES } from '../../../src/types/di';
+import { DI_TYPES } from '../../../src/config/di';
 
 export function createTestContainer(): Container {
   const container = new Container();

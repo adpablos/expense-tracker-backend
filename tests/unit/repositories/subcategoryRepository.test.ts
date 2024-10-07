@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 
 import { Subcategory } from '../../../src/models/Subcategory';
 import { SubcategoryRepository } from '../../../src/repositories/subcategoryRepository';
-import { DI_TYPES } from '../../../src/types/di';
+import { DI_TYPES } from '../../../src/config/di';
 import { AppError } from '../../../src/utils/AppError';
 import { createRepositoryTestContainer } from '../../testContainer';
 

@@ -4,9 +4,9 @@ import { jest } from '@jest/globals';
 import { Request } from 'express';
 import { Container } from 'inversify';
 
+import { DI_TYPES } from '../../../../src/config/di';
 import { Expense } from '../../../../src/models/Expense';
 import { ImageProcessor } from '../../../../src/services/fileProcessors/ImageProcessor';
-import { DI_TYPES } from '../../../../src/types/di';
 import { AppError } from '../../../../src/utils/AppError';
 import { createTestContainer } from '../../../testContainer';
 import { createMockExpense } from '../../mocks/objectFactories';

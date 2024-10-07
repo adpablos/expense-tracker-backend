@@ -3,10 +3,10 @@ import { expressjwt, GetVerificationKey } from 'express-jwt';
 import { inject, injectable } from 'inversify';
 import jwksRsa from 'jwks-rsa';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { User } from '../models/User';
 import { UserService } from '../services/userService';
-import { DI_TYPES } from '../types/di';
 
 @injectable()
 export class AuthMiddleware {

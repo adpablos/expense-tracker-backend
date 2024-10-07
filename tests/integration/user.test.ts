@@ -2,13 +2,13 @@ import { Pool } from 'pg';
 import request from 'supertest';
 
 import { createApp } from '../../src/app';
+import { DI_TYPES } from '../../src/config/di';
 import logger from '../../src/config/logger';
 import { ROLES, STATUS } from '../../src/constants';
 import { HouseholdMember } from '../../src/models/HouseholdMember';
 import { User } from '../../src/models/User';
 import { HouseholdRepository } from '../../src/repositories/householdRepository';
 import { UserRepository } from '../../src/repositories/userRepository';
-import { DI_TYPES } from '../../src/types/di';
 
 import { logDatabaseState } from './helpers';
 import { mockAuthMiddleware } from './mocks/mockAuthMiddleware';

@@ -7,7 +7,7 @@ import { User } from '../models/User';
 import { HouseholdRepository } from '../repositories/householdRepository';
 import { UserRepository } from '../repositories/userRepository';
 import { UserHouseholdTransactionCoordinator } from '../transaction-coordinators/userHouseholdTransactionCoordinator';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

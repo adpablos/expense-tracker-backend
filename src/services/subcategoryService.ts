@@ -3,7 +3,7 @@ import { injectable, inject } from 'inversify';
 import logger from '../config/logger';
 import { Subcategory } from '../models/Subcategory';
 import { SubcategoryRepository } from '../repositories/subcategoryRepository';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 import { NotificationService } from './external/notificationService';

@@ -3,7 +3,7 @@ import { injectable, inject } from 'inversify';
 
 import logger from '../config/logger';
 import { HouseholdService } from '../services/householdService';
-import { DI_TYPES } from '../types/di';
+import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

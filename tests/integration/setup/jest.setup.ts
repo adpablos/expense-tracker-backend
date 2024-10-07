@@ -4,7 +4,7 @@ import { Container } from 'inversify';
 import { Pool } from 'pg';
 
 import logger from '../../../src/config/logger';
-import { DI_TYPES } from '../../../src/types/di';
+import { DI_TYPES } from '../../../src/config/di';
 import { cleanDatabase } from '../helpers';
 
 import { createTestContainer } from './testContainer';

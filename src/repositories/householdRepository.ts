@@ -5,8 +5,8 @@ import logger from '../config/logger';
 import { ROLES, STATUS } from '../constants';
 import { Household } from '../models/Household';
 import { HouseholdMember } from '../models/HouseholdMember';
-import { DI_TYPES } from '../types/di';
-import { DatabaseError } from '../types/errors';
+import { DI_TYPES } from '../config/di';
+import { DatabaseError } from './errors';
 import { AppError } from '../utils/AppError';
 
 @injectable()
