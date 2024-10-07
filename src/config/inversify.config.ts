@@ -8,6 +8,12 @@ import { SubcategoryController } from '../controllers/subcategoryController';
 import { UserController } from '../controllers/userController';
 import { AuthMiddleware } from '../middleware/authMiddleware';
 import { HouseholdMiddleware } from '../middleware/householdMiddleware';
+import { CategoryRepository } from '../repositories/categoryRepository';
+import { ExpenseRepository } from '../repositories/expenseRepository';
+import { HouseholdRepository } from '../repositories/householdRepository';
+import { SubcategoryRepository } from '../repositories/subcategoryRepository';
+import { UserRepository } from '../repositories/userRepository';
+import { CategoryHierarchyService } from '../services/categoryHierarchyService';
 import { CategoryService } from '../services/categoryService';
 import { ExpenseService } from '../services/expenseService';
 import { NotificationService } from '../services/external/notificationService';
@@ -21,9 +27,15 @@ import { TempFileHandler } from '../services/fileProcessors/TempFileHandler';
 import { HouseholdService } from '../services/householdService';
 import { SubcategoryService } from '../services/subcategoryService';
 import { UserService } from '../services/userService';
+import { UserHouseholdTransactionCoordinator } from '../transaction-coordinators/userHouseholdTransactionCoordinator';
 import { DI_TYPES } from '../types/di';
 
+import pool from './db'; // Importa el pool de base de datos
+
 const container = new Container();
+
+// Enlaza el pool de base de datos
+container.bind(DI_TYPES.DbPool).toConstantValue(pool);
 
 // Bind your services and controllers here
 container.bind<UserService>(DI_TYPES.UserService).to(UserService);
@@ -53,5 +65,21 @@ container.bind<SubcategoryController>(DI_TYPES.SubcategoryController).to(Subcate
 
 container.bind<AuthMiddleware>(DI_TYPES.AuthMiddleware).to(AuthMiddleware);
 container.bind<HouseholdMiddleware>(DI_TYPES.HouseholdMiddleware).to(HouseholdMiddleware);
+
+// Repositorios
+container.bind<CategoryRepository>(DI_TYPES.CategoryRepository).to(CategoryRepository);
+container.bind<ExpenseRepository>(DI_TYPES.ExpenseRepository).to(ExpenseRepository);
+container.bind<HouseholdRepository>(DI_TYPES.HouseholdRepository).to(HouseholdRepository);
+container.bind<SubcategoryRepository>(DI_TYPES.SubcategoryRepository).to(SubcategoryRepository);
+container.bind<UserRepository>(DI_TYPES.UserRepository).to(UserRepository);
+
+container
+  .bind<CategoryHierarchyService>(DI_TYPES.CategoryHierarchyService)
+  .to(CategoryHierarchyService);
+
+// Añade este enlace para el UserHouseholdTransactionCoordinator
+container
+  .bind<UserHouseholdTransactionCoordinator>(DI_TYPES.UserHouseholdTransactionCoordinator)
+  .to(UserHouseholdTransactionCoordinator);
 
 export { container };

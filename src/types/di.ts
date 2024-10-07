@@ -37,9 +37,9 @@ export const DI_TYPES = {
   HouseholdRepository: Symbol.for('HouseholdRepository'),
   UserRepository: Symbol.for('UserRepository'),
   CategoryRepository: Symbol.for('CategoryRepository'),
-  SubcategoryRepository: Symbol('SubcategoryRepository'),
-  ExpenseRepository: Symbol('ExpenseRepository'),
-  UserHouseholdTransactionCoordinator: Symbol('UserHouseholdTransactionCoordinator'),
+  SubcategoryRepository: Symbol.for('SubcategoryRepository'),
+  ExpenseRepository: Symbol.for('ExpenseRepository'),
+  UserHouseholdTransactionCoordinator: Symbol.for('UserHouseholdTransactionCoordinator'),
 
   // Other
   Logger: Symbol.for('Logger'),

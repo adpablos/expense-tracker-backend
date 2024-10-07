@@ -1,6 +1,6 @@
 import { createApp } from './app';
 import config from './config/config';
-import { container } from './config/dependencyContainer';
+import { container } from './config/inversify.config';
 import logger from './config/logger';
 
 const app = createApp(container);
