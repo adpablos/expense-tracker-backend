@@ -2,9 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { injectable, inject, Container } from 'inversify';
 import { Pool } from 'pg';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { HouseholdMiddleware } from '../../../src/middleware/householdMiddleware';
 import { HouseholdService } from '../../../src/services/householdService';
-import { DI_TYPES } from '../../../src/config/di';
 import { AppError } from '../../../src/utils/AppError';
 import { TestData } from '../setup/testData';
 

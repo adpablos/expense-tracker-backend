@@ -4,11 +4,11 @@ import { jest } from '@jest/globals';
 import { Request } from 'express';
 import { Container } from 'inversify';
 
+import { DI_TYPES } from '../../../../src/config/di';
 import { Expense } from '../../../../src/models/Expense';
 import { User } from '../../../../src/models/User';
 import { AudioConverter } from '../../../../src/services/fileProcessors/AudioConverter';
 import { AudioProcessor } from '../../../../src/services/fileProcessors/AudioProcessor';
-import { DI_TYPES } from '../../../../src/config/di';
 import { AppError } from '../../../../src/utils/AppError';
 import { createTestContainer } from '../../../testContainer';
 import { createMockExpense } from '../../mocks/objectFactories';

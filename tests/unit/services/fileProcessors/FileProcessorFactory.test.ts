@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { Container } from 'inversify';
 
+import { DI_TYPES } from '../../../../src/config/di';
 import { AudioProcessor } from '../../../../src/services/fileProcessors/AudioProcessor';
 import { FileProcessorFactory } from '../../../../src/services/fileProcessors/FileProcessorFactory';
 import { ImageProcessor } from '../../../../src/services/fileProcessors/ImageProcessor';
-import { DI_TYPES } from '../../../../src/config/di';
 import { AppError } from '../../../../src/utils/AppError';
 import { createTestContainer } from '../../../testContainer';
 

@@ -3,8 +3,8 @@ import dotenv from 'dotenv';
 import { Container } from 'inversify';
 import { Pool } from 'pg';
 
-import logger from '../../../src/config/logger';
 import { DI_TYPES } from '../../../src/config/di';
+import logger from '../../../src/config/logger';
 import { cleanDatabase } from '../helpers';
 
 import { createTestContainer } from './testContainer';

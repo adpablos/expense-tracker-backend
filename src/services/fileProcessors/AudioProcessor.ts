@@ -2,9 +2,9 @@
 import { Request } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { DI_TYPES } from '../../config/di';
 import logger from '../../config/logger';
 import { Expense } from '../../models/Expense';
-import { DI_TYPES } from '../../config/di';
 import { AppError } from '../../utils/AppError';
 import { OpenAIService } from '../external/openaiService';
 

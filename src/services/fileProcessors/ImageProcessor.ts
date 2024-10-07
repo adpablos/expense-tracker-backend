@@ -2,8 +2,8 @@
 import { Request } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { Expense } from '../../models/Expense';
 import { DI_TYPES } from '../../config/di';
+import { Expense } from '../../models/Expense';
 import { AppError } from '../../utils/AppError';
 import { encodeImage } from '../../utils/encodeImage';
 import { OpenAIService } from '../external/openaiService';

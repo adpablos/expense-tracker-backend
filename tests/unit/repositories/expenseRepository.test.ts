@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import { Pool } from 'pg';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { Expense } from '../../../src/models/Expense';
 import { ExpenseRepository } from '../../../src/repositories/expenseRepository';
-import { DI_TYPES } from '../../../src/config/di';
 import { AppError } from '../../../src/utils/AppError';
 import { createRepositoryTestContainer } from '../../testContainer';
 

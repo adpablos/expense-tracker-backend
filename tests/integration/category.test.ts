@@ -3,9 +3,9 @@ import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 
 import { createApp } from '../../src/app';
+import { DI_TYPES } from '../../src/config/di';
 import logger from '../../src/config/logger';
 import { Category } from '../../src/models/Category';
-import { DI_TYPES } from '../../src/config/di';
 
 import { logDatabaseState } from './helpers';
 import { mockMiddlewares } from './mocks/mockMiddlewares';

@@ -1,5 +1,6 @@
 import { Container } from 'inversify';
 
+import { DI_TYPES } from '../src/config/di';
 import { CategoryRepository } from '../src/repositories/categoryRepository';
 import { HouseholdRepository } from '../src/repositories/householdRepository';
 import { SubcategoryRepository } from '../src/repositories/subcategoryRepository';
@@ -10,7 +11,6 @@ import { HouseholdService } from '../src/services/householdService';
 import { SubcategoryService } from '../src/services/subcategoryService';
 import { UserService } from '../src/services/userService';
 import { UserHouseholdTransactionCoordinator } from '../src/transaction-coordinators/userHouseholdTransactionCoordinator';
-import { DI_TYPES } from '../src/config/di';
 
 import {
   mockCategoryService,

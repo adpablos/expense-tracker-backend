@@ -1,13 +1,13 @@
 import { injectable, inject } from 'inversify';
 import { Pool, PoolClient } from 'pg';
 
+import { DI_TYPES } from '../config/di';
 import logger from '../config/logger';
 import { Household } from '../models/Household';
 import { HouseholdMember } from '../models/HouseholdMember';
 import { User } from '../models/User';
 import { HouseholdRepository } from '../repositories/householdRepository';
 import { UserRepository } from '../repositories/userRepository';
-import { DI_TYPES } from '../config/di';
 import { AppError } from '../utils/AppError';
 
 @injectable()

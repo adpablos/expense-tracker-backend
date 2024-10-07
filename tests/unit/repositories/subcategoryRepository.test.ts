@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import { Pool } from 'pg';
 
+import { DI_TYPES } from '../../../src/config/di';
 import { Subcategory } from '../../../src/models/Subcategory';
 import { SubcategoryRepository } from '../../../src/repositories/subcategoryRepository';
-import { DI_TYPES } from '../../../src/config/di';
 import { AppError } from '../../../src/utils/AppError';
 import { createRepositoryTestContainer } from '../../testContainer';
 

@@ -2,13 +2,13 @@ import 'reflect-metadata';
 import { Container } from 'inversify';
 import { Pool } from 'pg';
 
+import { DI_TYPES } from '../src/config/di';
 import logger from '../src/config/logger';
 import { CategoryRepository } from '../src/repositories/categoryRepository';
 import { ExpenseRepository } from '../src/repositories/expenseRepository';
 import { HouseholdRepository } from '../src/repositories/householdRepository';
 import { SubcategoryRepository } from '../src/repositories/subcategoryRepository';
 import { UserRepository } from '../src/repositories/userRepository';
-import { DI_TYPES } from '../src/config/di';
 
 import { mockAuthMiddleware } from './integration/mocks/mockAuthMiddleware';
 import {
