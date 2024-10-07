@@ -19,7 +19,12 @@
             },
             "sourceMaps": true,
             "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "!**/node_modules/**"
+            ],
+            "preLaunchTask": "tsc: build - tsconfig.json"
         },
         {
             "type": "node",
@@ -56,20 +61,6 @@
             ],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
-          },
-          {
-            "type": "node",
-            "request": "launch",
-            "name": "Debug with Nodemon",
-            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/nodemon",
-            "program": "${workspaceFolder}/src/index.ts",
-            "restart": true,
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "args": ["--exec", "node", "--loader", "ts-node/esm"],
-            "env": {
-                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
-            }
           }
     ],
     "inputs": [

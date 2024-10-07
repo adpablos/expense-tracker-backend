@@ -24,6 +24,7 @@ export function createApp(container: Container): express.Application {
 
   const allowedOrigins = [
     'https://expense-tracker-pwa-eta.vercel.app', // Remote deployment
+    'http://localhost:3001',
     'http://localhost:3002', // local development
   ];
 
