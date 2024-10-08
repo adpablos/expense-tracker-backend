@@ -1,24 +1,9 @@
-import axios, { AxiosError } from 'axios';
-import express from 'express';
+import axios, { isAxiosError } from 'axios';
+import { Router } from 'express';
 
 import logger from '../config/logger';
 
-interface Auth0Error {
-  response?: {
-    data: {
-      error?: string;
-      error_description?: string;
-      [key: string]: unknown;
-    };
-    status: number;
-  };
-  request?: unknown;
-  message: string;
-}
-
-const router = express.Router();
-
-export default router;
+const router = Router();
 
 /**
  * @swagger
@@ -53,40 +38,42 @@ router.post('/get-token', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const response = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
-      grant_type: 'password',
-      username: email,
-      password: password,
-      audience: process.env.AUTH0_AUDIENCE,
-      client_id: process.env.AUTH0_CLIENT_ID,
-      client_secret: process.env.AUTH0_CLIENT_SECRET,
-      scope: 'openid',
-    });
+    logger.info('Attempting to obtain token', { email });
 
+    const response = await axios.post(
+      `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
+      {
+        grant_type: 'http://auth0.com/oauth/grant-type/password-realm',
+        username: email,
+        password: password,
+        audience: process.env.AUTH0_AUDIENCE,
+        client_id: process.env.AUTH0_CLIENT_ID,
+        client_secret: process.env.AUTH0_CLIENT_SECRET,
+        realm: 'Username-Password-Authentication',
+        scope: 'openid profile email',
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    logger.info('Token obtained successfully');
     res.json(response.data);
   } catch (error) {
-    const axiosError = error as AxiosError<Auth0Error>;
-    logger.error('Error obtaining token', {
-      error: axiosError.response ? axiosError.response.data : axiosError.message,
-      status: axiosError.response ? axiosError.response.status : null,
-    });
-
-    if (axiosError.response) {
-      // Auth0 specific error responses
-      if (axiosError.response.status === 401 || axiosError.response.status === 403) {
-        res.status(401).json({ message: 'Invalid credentials' });
-      } else {
-        res.status(axiosError.response.status).json({
-          error: 'Failed to obtain token',
-          details: axiosError.response.data,
-        });
-      }
-    } else if (axiosError.request) {
-      // The request was made but no response was received
-      res.status(500).json({ error: 'No response received from authentication server' });
+    if (isAxiosError(error) && error.response) {
+      logger.error('Error obtaining token', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers,
+      });
+      res.status(error.response.status).json(error.response.data);
     } else {
-      // Something happened in setting up the request that triggered an Error
-      res.status(500).json({ error: 'Internal server error' });
+      logger.error('Unexpected error', error);
+      res.status(500).json({ error: 'An unexpected error occurred' });
     }
   }
 });
+
+export default router;
