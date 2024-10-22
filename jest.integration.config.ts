@@ -17,7 +17,7 @@ const config: Config.InitialOptions = {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
-        tsconfig: 'tsconfig.json',
+        tsconfig: 'tsconfig.test.json',
         diagnostics: true,
         isolatedModules: false,
       },
