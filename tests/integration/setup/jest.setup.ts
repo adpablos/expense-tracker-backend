@@ -1,40 +1,67 @@
-import 'reflect-metadata';
-import dotenv from 'dotenv';
-import { Container } from 'inversify';
-import { Pool } from 'pg';
+/* eslint-disable import/order */
+import path from 'path';
 
-import { DI_TYPES } from '../../../src/config/di';
+import dotenv from 'dotenv';
+
+// Cargar variables de entorno específicas para tests
+const result = dotenv.config({
+  path: path.resolve(__dirname, '../../../.env.test'),
+  override: true,
+});
+
+if (result.error) {
+  throw new Error(`Error loading .env.test file: ${result.error.message}`);
+}
+
+// Verificar que las variables críticas están cargadas
+const requiredVars = ['DB_USER', 'DB_PASSWORD', 'DB_DATABASE', 'DB_HOST', 'DB_PORT'];
+
+const missingVars = requiredVars.filter((varName) => !process.env[varName]);
+if (missingVars.length > 0) {
+  throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+}
+
+import 'reflect-metadata';
+import { Container } from 'inversify';
+
 import logger from '../../../src/config/logger';
 import { cleanDatabase } from '../helpers';
 
 import { createTestContainer } from './testContainer';
 import { TestData } from './testData';
-
-dotenv.config({ path: '.env.test' });
+import testDbClient, { initializeDatabase } from './testDbClient';
 
 export let container: Container;
-let pool: Pool;
 export let testData: TestData;
 
 beforeAll(async () => {
-  container = createTestContainer();
-  pool = container.get<Pool>(DI_TYPES.DbPool);
-  logger.info('Test setup completed');
+  try {
+    await initializeDatabase();
+    container = createTestContainer();
+
+    logger.info('Test setup completed', {
+      database: process.env.DB_DATABASE || 'expense_tracker_test',
+      port: process.env.DB_PORT || '5433',
+    });
+  } catch (error) {
+    logger.error('Error in test setup', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    throw error;
+  }
 });
 
 beforeEach(async () => {
-  const client = await pool.connect();
+  const client = await testDbClient.connect();
   try {
     await client.query('BEGIN');
     await cleanDatabase(client);
 
-    // Recreate test data
     const newTestData = new TestData();
     await newTestData.initialize(client);
     testData = newTestData;
 
     await client.query('COMMIT');
-    logger.info('Database cleaned and test data recreated before test');
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -44,6 +71,6 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  await pool.end();
+  await testDbClient.end();
   await container.unbindAll();
 });

@@ -2,8 +2,6 @@ import 'reflect-metadata';
 import { Container } from 'inversify';
 import { Pool } from 'pg';
 
-// Importa todos los repositorios, servicios, middleware y controladores necesarios
-
 import { DI_TYPES } from '../../../src/config/di';
 import { CategoryController } from '../../../src/controllers/categoryController';
 import { ExpenseController } from '../../../src/controllers/expenseController';
@@ -35,19 +33,22 @@ import { SubcategoryService } from '../../../src/services/subcategoryService';
 import { UserService } from '../../../src/services/userService';
 import { UserHouseholdTransactionCoordinator } from '../../../src/transaction-coordinators/userHouseholdTransactionCoordinator';
 
+import testConfig from './testConfig';
+import testDbClient from './testDbClient';
+
 export function createTestContainer(): Container {
   const container = new Container();
 
-  // Bind Pool
-  container.bind<Pool>(DI_TYPES.DbPool).toConstantValue(
-    new Pool({
-      user: process.env.DB_USER,
-      host: process.env.DB_HOST,
-      database: process.env.DB_DATABASE,
-      password: process.env.DB_PASSWORD,
-      port: parseInt(process.env.DB_PORT || '5432', 10),
-    })
-  );
+  // Primero, limpiamos cualquier binding existente para DbPool
+  if (container.isBound(DI_TYPES.DbPool)) {
+    container.unbind(DI_TYPES.DbPool);
+  }
+
+  // Bind test configuration
+  container.bind('Config').toConstantValue(testConfig);
+
+  // Bind test database client
+  container.bind<Pool>(DI_TYPES.DbPool).toConstantValue(testDbClient);
 
   // Bind Repositories
   container.bind(DI_TYPES.UserRepository).to(UserRepository);
@@ -63,6 +64,21 @@ export function createTestContainer(): Container {
   container.bind(DI_TYPES.ExpenseService).to(ExpenseService);
   container.bind(DI_TYPES.SubcategoryService).to(SubcategoryService);
   container.bind(DI_TYPES.CategoryHierarchyService).to(CategoryHierarchyService);
+  container.bind(DI_TYPES.NotificationService).to(NotificationService);
+  container.bind(DI_TYPES.OpenAIService).to(OpenAIService);
+
+  // File Processors
+  container
+    .bind<FileProcessor>(DI_TYPES.FileProcessor)
+    .to(ImageProcessor)
+    .whenTargetNamed('ImageProcessor');
+  container
+    .bind<FileProcessor>(DI_TYPES.FileProcessor)
+    .to(AudioProcessor)
+    .whenTargetNamed('AudioProcessor');
+  container.bind<FileProcessorFactory>(DI_TYPES.FileProcessorFactory).to(FileProcessorFactory);
+  container.bind<AudioConverter>(DI_TYPES.AudioConverter).to(AudioConverter);
+  container.bind<TempFileHandler>(DI_TYPES.TempFileHandler).to(TempFileHandler);
 
   // Bind Controllers
   container.bind(DI_TYPES.UserController).to(UserController);
@@ -77,29 +93,10 @@ export function createTestContainer(): Container {
   container.bind(DI_TYPES.RequestLogger).toConstantValue(requestLogger);
   container.bind(DI_TYPES.ResponseLogger).toConstantValue(responseLogger);
 
-  // Bind NotificationService
-  container.bind(DI_TYPES.NotificationService).to(NotificationService);
-  container.bind(DI_TYPES.OpenAIService).to(OpenAIService);
-  container
-    .bind<FileProcessor>(DI_TYPES.FileProcessor)
-    .to(ImageProcessor)
-    .whenTargetNamed('ImageProcessor');
-  container
-    .bind<FileProcessor>(DI_TYPES.FileProcessor)
-    .to(AudioProcessor)
-    .whenTargetNamed('AudioProcessor');
-  container.bind<FileProcessorFactory>(DI_TYPES.FileProcessorFactory).to(FileProcessorFactory);
-  container.bind<AudioConverter>(DI_TYPES.AudioConverter).to(AudioConverter);
-  container.bind<TempFileHandler>(DI_TYPES.TempFileHandler).to(TempFileHandler);
-
-  // Bind UserHouseholdTransactionCoordinator
+  // Bind Transaction Coordinator
   container
     .bind(DI_TYPES.UserHouseholdTransactionCoordinator)
     .to(UserHouseholdTransactionCoordinator);
 
   return container;
 }
-
-const container = createTestContainer();
-
-export { container };

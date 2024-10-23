@@ -2,16 +2,16 @@ import 'reflect-metadata';
 
 import fs from 'fs';
 
-import clientOpenAI from '../../../../src/config/openaiConfig';
 import { Expense } from '../../../../src/models/Expense';
 import { CategoryHierarchyService } from '../../../../src/services/categoryHierarchyService';
 import { ExpenseService } from '../../../../src/services/expenseService';
+import openaiClient from '../../../../src/services/external/clients/openaiClient';
 import { OpenAIService } from '../../../../src/services/external/openaiService';
 import { AppError } from '../../../../src/utils/AppError';
 
 jest.mock('../../../../src/services/expenseService');
 jest.mock('../../../../src/services/categoryHierarchyService');
-jest.mock('../../../../src/config/openaiConfig', () => ({
+jest.mock('../../../../src/services/external/clients/openaiClient', () => ({
   __esModule: true,
   default: {
     chat: {
@@ -68,7 +68,7 @@ describe('OpenAIService', () => {
           },
         ],
       };
-      (clientOpenAI.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Food: Groceries, Restaurants'
       );
@@ -92,7 +92,7 @@ describe('OpenAIService', () => {
           },
         ],
       };
-      (clientOpenAI.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Food: Groceries, Restaurants'
       );
@@ -104,7 +104,7 @@ describe('OpenAIService', () => {
     });
 
     it('should throw AppError if OpenAI API call fails', async () => {
-      (clientOpenAI.chat.completions.create as jest.Mock).mockRejectedValue(new Error('API Error'));
+      (openaiClient.chat.completions.create as jest.Mock).mockRejectedValue(new Error('API Error'));
 
       await expect(
         openAIService.processReceipt('base64image', 'household1', 'user1')
@@ -115,7 +115,7 @@ describe('OpenAIService', () => {
   describe('transcribeAudio', () => {
     it('should transcribe audio file', async () => {
       const mockTranscription = { text: 'Transcribed text' };
-      (clientOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(mockTranscription);
+      (openaiClient.audio.transcriptions.create as jest.Mock).mockResolvedValue(mockTranscription);
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ size: 1000 });
 
@@ -140,7 +140,7 @@ describe('OpenAIService', () => {
     it('should throw AppError if OpenAI API call fails', async () => {
       (fs.existsSync as jest.Mock).mockReturnValue(true);
       (fs.statSync as jest.Mock).mockReturnValue({ size: 1000 });
-      (clientOpenAI.audio.transcriptions.create as jest.Mock).mockRejectedValue(
+      (openaiClient.audio.transcriptions.create as jest.Mock).mockRejectedValue(
         new Error('API Error')
       );
 
@@ -172,7 +172,7 @@ describe('OpenAIService', () => {
           },
         ],
       };
-      (clientOpenAI.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Transportation: Fuel, Public Transit'
       );
@@ -200,7 +200,7 @@ describe('OpenAIService', () => {
           },
         ],
       };
-      (clientOpenAI.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Transportation: Fuel, Public Transit'
       );
@@ -216,7 +216,7 @@ describe('OpenAIService', () => {
     });
 
     it('should throw AppError if OpenAI API call fails', async () => {
-      (clientOpenAI.chat.completions.create as jest.Mock).mockRejectedValue(new Error('API Error'));
+      (openaiClient.chat.completions.create as jest.Mock).mockRejectedValue(new Error('API Error'));
 
       await expect(
         openAIService.analyzeTranscription('Transcription', 'household1', 'user1')

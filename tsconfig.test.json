@@ -6,8 +6,10 @@
       "paths": {
         "@/*": ["src/*"]
       },
-      "types": ["jest", "node"]
+      "types": ["jest", "node"],
+      "experimentalDecorators": true,
+      "emitDecoratorMetadata": true
     },
     "include": ["src/**/*", "tests/**/*", "global.d.ts"],
     "exclude": ["node_modules", "dist"]
-  }
+}
