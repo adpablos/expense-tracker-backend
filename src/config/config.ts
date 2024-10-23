@@ -1,27 +1,46 @@
 import dotenv from 'dotenv';
 
+import { Auth0Config, createAuthConfig } from './auth';
+import { DatabaseConfig, createDatabaseConfig } from './database';
+import { OpenAIConfig, createOpenAIConfig } from './openai';
+
 dotenv.config();
 
-interface Config {
-  port: number;
-  dbUser: string;
-  dbHost: string;
-  dbDatabase: string;
-  dbPassword: string;
-  dbPort: number;
-  nodeEnv: string;
-  dbSSL: boolean;
+export interface AppConfig {
+  server: {
+    port: number;
+    nodeEnv: string;
+    npmConfigProduction: boolean;
+  };
+  db: DatabaseConfig;
+  auth: Auth0Config;
+  openai: OpenAIConfig;
 }
 
-const config: Config = {
+// Validate core environment variables
+const validateCoreEnvVariables = () => {
+  const requiredVars = ['PORT', 'NODE_ENV', 'NPM_CONFIG_PRODUCTION'];
+
+  const missingVars = requiredVars.filter((varName) => !process.env[varName]);
+  if (missingVars.length > 0) {
+    throw new Error(`Missing required core environment variables: ${missingVars.join(', ')}`);
+  }
+};
+
+// Create server configuration
+const createServerConfig = () => ({
   port: parseInt(process.env.PORT || '3000', 10),
-  dbUser: process.env.DB_USER || '',
-  dbHost: process.env.DB_HOST || '',
-  dbDatabase: process.env.DB_DATABASE || '',
-  dbPassword: process.env.DB_PASSWORD || '',
-  dbPort: parseInt(process.env.DB_PORT || '5432', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  dbSSL: process.env.DB_SSL === 'true',
+  npmConfigProduction: process.env.NPM_CONFIG_PRODUCTION === 'true',
+});
+
+validateCoreEnvVariables();
+
+const config: AppConfig = {
+  server: createServerConfig(),
+  db: createDatabaseConfig(),
+  auth: createAuthConfig(),
+  openai: createOpenAIConfig(),
 };
 
 export default config;

@@ -1,12 +1,12 @@
 import { createApp } from './app';
 import config from './config/config';
-import { container } from './config/inversify.config';
+import { container } from './config/inversify';
 import logger from './config/logger';
 
 const app = createApp(container);
 
-const server = app.listen(config.port, () => {
-  logger.info(`Server running in ${config.nodeEnv} mode on port ${config.port}`);
+const server = app.listen(config.server.port, () => {
+  logger.info(`Server running in ${config.server.nodeEnv} mode on port ${config.server.port}`);
 });
 
 // Handling not caught error messages

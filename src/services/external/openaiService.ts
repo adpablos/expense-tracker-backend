@@ -3,12 +3,15 @@ import fs from 'fs';
 import { injectable, inject } from 'inversify';
 import OpenAI from 'openai';
 
+import config from '../../config/config';
 import { DI_TYPES } from '../../config/di';
-import clientOpenAI from '../../config/openaiConfig';
+import logger from '../../config/logger';
 import { Expense } from '../../models/Expense';
 import { AppError } from '../../utils/AppError';
 import { CategoryHierarchyService } from '../categoryHierarchyService';
 import { ExpenseService } from '../expenseService';
+
+import openaiClient from './clients/openaiClient';
 
 @injectable()
 export class OpenAIService {
@@ -52,8 +55,8 @@ export class OpenAIService {
         await this.categoryHierarchyService.getCategoriesAndSubcategories(householdId);
       const currentDate = new Date().toISOString();
 
-      const response = await clientOpenAI.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const response = await openaiClient.chat.completions.create({
+        model: config.openai.model, // Usar la configuración centralizada
         messages: [
           {
             role: 'user',
@@ -116,7 +119,11 @@ export class OpenAIService {
 
       const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
       return await this.extractExpenseFromFunctionCall(functionCall, householdId, userId);
-    } catch {
+    } catch (error) {
+      logger.error('Error processing receipt', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        householdId,
+      });
       throw new AppError('Error processing receipt', 500);
     }
   }
@@ -127,7 +134,7 @@ export class OpenAIService {
     }
 
     try {
-      const transcription = await clientOpenAI.audio.transcriptions.create({
+      const transcription = await openaiClient.audio.transcriptions.create({
         model: 'whisper-1',
         file: fs.createReadStream(filePath),
         response_format: 'verbose_json',
@@ -135,7 +142,11 @@ export class OpenAIService {
       });
 
       return transcription.text;
-    } catch {
+    } catch (error) {
+      logger.error('Error transcribing audio', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        filePath,
+      });
       throw new AppError('Error transcribing audio', 500);
     }
   }
@@ -150,8 +161,8 @@ export class OpenAIService {
         await this.categoryHierarchyService.getCategoriesAndSubcategories(householdId);
       const currentDate = new Date().toISOString();
 
-      const response = await clientOpenAI.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const response = await openaiClient.chat.completions.create({
+        model: config.openai.model,
         messages: [
           {
             role: 'user',
@@ -208,7 +219,11 @@ export class OpenAIService {
 
       const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
       return await this.extractExpenseFromFunctionCall(functionCall, householdId, userId);
-    } catch {
+    } catch (error) {
+      logger.error('Error analyzing transcription', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        householdId,
+      });
       throw new AppError('Error analyzing transcription', 500);
     }
   }
