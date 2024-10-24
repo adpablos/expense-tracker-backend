@@ -12,52 +12,49 @@ if (process.env.NODE_ENV !== 'test' && types && types.setTypeParser) {
 }
 
 const createPool = (): Pool => {
+  const { host, database, port, user, password, ssl } = config.db;
+
   const pool = new Pool({
-    user: config.db.user,
-    host: config.db.host,
-    database: config.db.database,
-    password: config.db.password,
-    port: config.db.port,
-    ssl: config.db.ssl ? { rejectUnauthorized: false } : false,
+    user,
+    host,
+    database,
+    password,
+    port,
+    ssl: ssl ? { rejectUnauthorized: false } : false,
   });
 
   if (process.env.NODE_ENV !== 'test') {
+    const logContext = {
+      host,
+      database,
+      port,
+      environment: process.env.NODE_ENV,
+    };
+
     // Set up event listeners for pool
     pool.on('connect', () => {
-      logger.info('Connected to the database', {
-        host: config.db.host,
-        database: config.db.database,
-        port: config.db.port,
-      });
+      logger.info('Database connection established', logContext);
     });
 
     pool.on('error', (err) => {
       logger.error('Unexpected error on idle client', {
+        ...logContext,
         error: err.message,
         stack: err.stack,
-        host: config.db.host,
-        database: config.db.database,
       });
       process.exit(-1);
     });
 
     // Initial connection test
-    pool
-      .connect()
-      .then(() => {
-        logger.info('Database connection established', {
-          host: config.db.host,
-          database: config.db.database,
-        });
-      })
-      .catch((err) => {
-        logger.error('Error connecting to the database', {
-          error: err.message,
-          stack: err.stack,
-          host: config.db.host,
-          database: config.db.database,
-        });
+    pool.connect().catch((err) => {
+      logger.error('Error connecting to the database', {
+        ...logContext,
+        error: err.message,
+        stack: err.stack,
       });
+      // Optionally exit here if you want to fail fast
+      // process.exit(-1);
+    });
   }
 
   return pool;
