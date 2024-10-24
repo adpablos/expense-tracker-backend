@@ -8,7 +8,7 @@
     "init-db": "ts-node scripts/init-db.ts",
     "start": "node dist/index.js",
     "dev": "ts-node --files src/index.ts",
-    "build": "tsc",
+    "build": "tsc -p config/tsconfig.json",
     "test:unit": "NODE_ENV=test NODE_OPTIONS='-r dotenv/config' jest --config config/jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter",
     "test:unit:specific": "NODE_ENV=test NODE_OPTIONS='-r dotenv/config' jest --config config/jest.unit.config.ts --reporters=default --reporters=jest-summarizing-reporter --",
     "test:coverage": "jest --config config/jest.unit.config.ts --coverage",
