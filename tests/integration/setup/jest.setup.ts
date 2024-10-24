@@ -27,7 +27,7 @@ import { Container } from 'inversify';
 import logger from '../../../src/config/logger';
 import { cleanDatabase } from '../helpers';
 
-import { createTestContainer } from './testContainer';
+import { createIntegrationTestContainer } from '../../config/testContainers';
 import { TestData } from './testData';
 import testDbClient, { initializeDatabase } from './testDbClient';
 
@@ -37,7 +37,10 @@ export let testData: TestData;
 beforeAll(async () => {
   try {
     await initializeDatabase();
-    container = createTestContainer();
+    // Usar el nuevo contenedor de integración con la base de datos de test
+    container = createIntegrationTestContainer({
+      useTestDb: true,
+    });
 
     logger.info('Test setup completed', {
       database: process.env.DB_DATABASE || 'expense_tracker_test',
