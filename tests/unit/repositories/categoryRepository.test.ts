@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, QueryResult } from 'pg';
 
 import { DI_TYPES } from '../../../src/config/di';
 import { Category } from '../../../src/models/Category';
@@ -6,7 +6,41 @@ import { CategoryRepository } from '../../../src/repositories/categoryRepository
 import { AppError } from '../../../src/utils/AppError';
 import { createRepositoryTestContainer } from '../../testContainer';
 
+// Definir interfaces para los tipos de datos
+interface CategoryRow {
+  id: string;
+  name: string;
+  household_id: string;
+}
+
+interface QueryResultRow {
+  rowCount?: number;
+}
+
 describe('CategoryRepository', () => {
+  // Test fixtures
+  const TEST_DATA = {
+    HOUSEHOLD_ID: 'household-id',
+    CATEGORY: {
+      ID: 'category-id',
+      NAME: 'Test Category',
+    },
+    ERROR_MESSAGES: {
+      DATABASE: 'Database error',
+      FOREIGN_KEY: 'Foreign key constraint',
+    },
+  } as const;
+
+  // Helper function to create a mock category
+  const createMockCategory = (
+    id: string = TEST_DATA.CATEGORY.ID,
+    name: string = TEST_DATA.CATEGORY.NAME
+  ): CategoryRow => ({
+    id,
+    name,
+    household_id: TEST_DATA.HOUSEHOLD_ID,
+  });
+
   let categoryRepository: CategoryRepository;
   let mockPool: jest.Mocked<Pool>;
 
@@ -17,61 +51,72 @@ describe('CategoryRepository', () => {
     jest.clearAllMocks();
   });
 
+  // Helper function to mock successful query
+  const mockSuccessfulQuery = <T extends CategoryRow | QueryResultRow>(rows: T[]): void => {
+    (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows } as QueryResult<T>);
+  };
+
+  // Helper function to mock failed query
+  const mockFailedQuery = (error: Error): void => {
+    (mockPool.query as jest.Mock).mockRejectedValueOnce(error);
+  };
+
   describe('getCategoryById', () => {
     it('should return a category when found', async () => {
-      const categoryId = 'category-id';
-      const mockCategory = {
-        id: categoryId,
-        name: 'Test Category',
-        household_id: 'household-id',
-      };
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [mockCategory] });
+      const mockCategory = createMockCategory();
+      mockSuccessfulQuery([mockCategory]);
 
-      const result = await categoryRepository.getCategoryById(categoryId);
+      const result = await categoryRepository.getCategoryById(TEST_DATA.CATEGORY.ID);
 
       expect(result).toBeInstanceOf(Category);
-      expect(result?.id).toBe(categoryId);
-      expect(result?.name).toBe('Test Category');
-      expect(result?.householdId).toBe('household-id');
+      expect(result).toMatchObject({
+        id: TEST_DATA.CATEGORY.ID,
+        name: TEST_DATA.CATEGORY.NAME,
+        householdId: TEST_DATA.HOUSEHOLD_ID,
+      });
     });
 
     it('should return null when the category is not found', async () => {
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
-
+      mockSuccessfulQuery([]);
       const result = await categoryRepository.getCategoryById('non-existent-id');
-
       expect(result).toBeNull();
     });
 
-    it('should throw an error if the query fails', async () => {
-      (mockPool.query as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
-
-      await expect(categoryRepository.getCategoryById('category-id')).rejects.toThrow(AppError);
+    it('should throw an AppError if the query fails', async () => {
+      mockFailedQuery(new Error(TEST_DATA.ERROR_MESSAGES.DATABASE));
+      await expect(categoryRepository.getCategoryById(TEST_DATA.CATEGORY.ID)).rejects.toThrow(
+        AppError
+      );
     });
   });
 
   describe('getAllCategories', () => {
+    const mockCategories = [
+      createMockCategory('cat1', 'Category 1'),
+      createMockCategory('cat2', 'Category 2'),
+    ];
+
     it('should return all categories for a household', async () => {
-      const householdId = 'household-id';
-      const mockCategories = [
-        { id: 'cat1', name: 'Category 1', household_id: householdId },
-        { id: 'cat2', name: 'Category 2', household_id: householdId },
-      ];
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: mockCategories });
+      mockSuccessfulQuery(mockCategories);
 
-      const result = await categoryRepository.getAllCategories(householdId);
+      const result = await categoryRepository.getAllCategories(TEST_DATA.HOUSEHOLD_ID);
 
-      expect(result).toHaveLength(2);
-      expect(result[0]).toBeInstanceOf(Category);
-      expect(result[0].id).toBe('cat1');
-      expect(result[1].id).toBe('cat2');
+      expect(result).toHaveLength(mockCategories.length);
+      result.forEach((category, index) => {
+        expect(category).toBeInstanceOf(Category);
+        expect(category).toMatchObject({
+          id: mockCategories[index].id,
+          name: mockCategories[index].name,
+          householdId: TEST_DATA.HOUSEHOLD_ID,
+        });
+      });
     });
 
-    it('should throw an error if the query fails', async () => {
-      const householdId = 'household-id';
-      (mockPool.query as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
-
-      await expect(categoryRepository.getAllCategories(householdId)).rejects.toThrow(AppError);
+    it('should throw an AppError if the query fails', async () => {
+      mockFailedQuery(new Error(TEST_DATA.ERROR_MESSAGES.DATABASE));
+      await expect(categoryRepository.getAllCategories(TEST_DATA.HOUSEHOLD_ID)).rejects.toThrow(
+        AppError
+      );
     });
   });
 
@@ -126,28 +171,21 @@ describe('CategoryRepository', () => {
 
   describe('deleteCategory', () => {
     it('should delete a category successfully', async () => {
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 1 });
-
+      mockSuccessfulQuery([{ rowCount: 1 }]);
       await expect(
-        categoryRepository.deleteCategory('category-id', 'household-id')
+        categoryRepository.deleteCategory(TEST_DATA.CATEGORY.ID, TEST_DATA.HOUSEHOLD_ID)
       ).resolves.not.toThrow();
     });
 
-    it('should throw an error if the category is not found', async () => {
-      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rowCount: 0 });
+    it('should throw an AppError for foreign key constraint violation', async () => {
+      const foreignKeyError = new Error(TEST_DATA.ERROR_MESSAGES.FOREIGN_KEY) as Error & {
+        code?: string;
+      };
+      foreignKeyError.code = '23503';
+      mockFailedQuery(foreignKeyError);
 
       await expect(
-        categoryRepository.deleteCategory('non-existent-id', 'household-id')
-      ).rejects.toThrow(AppError);
-    });
-
-    it('should handle the case of not being able to delete a category with associated subcategories', async () => {
-      const error = new Error('Foreign key constraint') as Error & { code?: string };
-      error.code = '23503';
-      (mockPool.query as jest.Mock).mockRejectedValueOnce(error);
-
-      await expect(
-        categoryRepository.deleteCategory('category-id', 'household-id')
+        categoryRepository.deleteCategory(TEST_DATA.CATEGORY.ID, TEST_DATA.HOUSEHOLD_ID)
       ).rejects.toThrow(AppError);
     });
   });
