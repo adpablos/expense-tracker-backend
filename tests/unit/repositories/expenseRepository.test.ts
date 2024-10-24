@@ -5,14 +5,14 @@ import { DI_TYPES } from '../../../src/config/di';
 import { Expense } from '../../../src/models/Expense';
 import { ExpenseRepository } from '../../../src/repositories/expenseRepository';
 import { AppError } from '../../../src/utils/AppError';
-import { createRepositoryTestContainer } from '../../testContainer';
+import { createUnitTestContainer } from '../../config/testContainers';
 
 describe('ExpenseRepository', () => {
   let expenseRepository: ExpenseRepository;
   let mockPool: jest.Mocked<Pool>;
 
   beforeEach(() => {
-    const container = createRepositoryTestContainer();
+    const container = createUnitTestContainer({ mockDbPool: true });
     mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     expenseRepository = container.get<ExpenseRepository>(DI_TYPES.ExpenseRepository);
     jest.clearAllMocks();

@@ -10,9 +10,15 @@ import { User } from '../../../../src/models/User';
 import { AudioConverter } from '../../../../src/services/fileProcessors/AudioConverter';
 import { AudioProcessor } from '../../../../src/services/fileProcessors/AudioProcessor';
 import { AppError } from '../../../../src/utils/AppError';
-import { createTestContainer } from '../../../testContainer';
+import { createUnitTestContainer } from '../../../config/testContainers';
 import { createMockExpense } from '../../mocks/objectFactories';
 import { mockOpenAIService, mockTempFileHandler } from '../../mocks/serviceMocks';
+
+interface CustomRequest extends Request {
+  currentHouseholdId?: string;
+  user?: User;
+  startTime?: number;
+}
 
 jest.mock('../../../../src/config/logger');
 
@@ -26,7 +32,7 @@ describe('AudioProcessor', () => {
   let mockAudioConverter: jest.Mocked<AudioConverter>;
 
   beforeEach(() => {
-    container = createTestContainer({
+    container = createUnitTestContainer({
       mockServices: true,
     });
 
@@ -55,7 +61,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<Request> = {
+    const req: Partial<CustomRequest> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
@@ -100,7 +106,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<Request> = {
+    const req: Partial<CustomRequest> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
@@ -152,7 +158,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<Request> = {
+    const req: Partial<CustomRequest> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
@@ -172,7 +178,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<Request> = {
+    const req: Partial<CustomRequest> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };
@@ -193,7 +199,7 @@ describe('AudioProcessor', () => {
       originalname: 'audio.mp3',
     } as Express.Multer.File;
 
-    const req: Partial<Request> = {
+    const req: Partial<CustomRequest> = {
       currentHouseholdId: 'household-id',
       user: mockUser,
     };

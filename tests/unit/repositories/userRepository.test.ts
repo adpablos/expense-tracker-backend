@@ -5,14 +5,14 @@ import { DI_TYPES } from '../../../src/config/di';
 import { User } from '../../../src/models/User';
 import { UserRepository } from '../../../src/repositories/userRepository';
 import { AppError } from '../../../src/utils/AppError';
-import { createRepositoryTestContainer } from '../../testContainer';
+import { createUnitTestContainer } from '../../config/testContainers';
 
 describe('UserRepository', () => {
   let userRepository: UserRepository;
   let mockPool: jest.Mocked<Pool>;
 
   beforeEach(() => {
-    const container = createRepositoryTestContainer();
+    const container = createUnitTestContainer({ mockDbPool: true });
     mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     userRepository = container.get<UserRepository>(DI_TYPES.UserRepository);
   });

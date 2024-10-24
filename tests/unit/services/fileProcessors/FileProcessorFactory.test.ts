@@ -6,7 +6,7 @@ import { AudioProcessor } from '../../../../src/services/fileProcessors/AudioPro
 import { FileProcessorFactory } from '../../../../src/services/fileProcessors/FileProcessorFactory';
 import { ImageProcessor } from '../../../../src/services/fileProcessors/ImageProcessor';
 import { AppError } from '../../../../src/utils/AppError';
-import { createTestContainer } from '../../../testContainer';
+import { createUnitTestContainer } from '../../../config/testContainers';
 
 describe('FileProcessorFactory', () => {
   let container: Container;
@@ -15,7 +15,8 @@ describe('FileProcessorFactory', () => {
   let mockAudioProcessor: AudioProcessor;
 
   beforeEach(() => {
-    container = createTestContainer({ mockServices: true });
+    // Cambio principal: usar el nuevo contenedor
+    container = createUnitTestContainer({ mockServices: true });
     mockImageProcessor = { process: jest.fn() } as unknown as ImageProcessor;
     mockAudioProcessor = { process: jest.fn() } as unknown as AudioProcessor;
 

@@ -5,14 +5,14 @@ import { DI_TYPES } from '../../../src/config/di';
 import { Subcategory } from '../../../src/models/Subcategory';
 import { SubcategoryRepository } from '../../../src/repositories/subcategoryRepository';
 import { AppError } from '../../../src/utils/AppError';
-import { createRepositoryTestContainer } from '../../testContainer';
+import { createUnitTestContainer } from '../../config/testContainers';
 
 describe('SubcategoryRepository', () => {
   let subcategoryRepository: SubcategoryRepository;
   let mockPool: jest.Mocked<Pool>;
 
   beforeEach(() => {
-    const container = createRepositoryTestContainer();
+    const container = createUnitTestContainer({ mockDbPool: true });
     mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     subcategoryRepository = container.get<SubcategoryRepository>(DI_TYPES.SubcategoryRepository);
   });

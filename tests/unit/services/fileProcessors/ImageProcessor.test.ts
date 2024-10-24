@@ -8,7 +8,7 @@ import { DI_TYPES } from '../../../../src/config/di';
 import { Expense } from '../../../../src/models/Expense';
 import { ImageProcessor } from '../../../../src/services/fileProcessors/ImageProcessor';
 import { AppError } from '../../../../src/utils/AppError';
-import { createTestContainer } from '../../../testContainer';
+import { createUnitTestContainer } from '../../../config/testContainers';
 import { createMockExpense } from '../../mocks/objectFactories';
 import { mockOpenAIService } from '../../mocks/serviceMocks';
 
@@ -20,7 +20,8 @@ describe('ImageProcessor', () => {
   let imageProcessor: ImageProcessor;
 
   beforeEach(() => {
-    container = createTestContainer({
+    // Cambio principal: usar el nuevo contenedor
+    container = createUnitTestContainer({
       mockServices: true,
     });
 

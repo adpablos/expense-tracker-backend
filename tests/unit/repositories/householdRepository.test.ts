@@ -6,14 +6,14 @@ import { Household } from '../../../src/models/Household';
 import { HouseholdMember } from '../../../src/models/HouseholdMember';
 import { HouseholdRepository } from '../../../src/repositories/householdRepository';
 import { AppError } from '../../../src/utils/AppError';
-import { createRepositoryTestContainer } from '../../testContainer';
+import { createUnitTestContainer } from '../../config/testContainers';
 
 describe('HouseholdRepository', () => {
   let householdRepository: HouseholdRepository;
   let mockPool: jest.Mocked<Pool>;
 
   beforeEach(() => {
-    const container = createRepositoryTestContainer();
+    const container = createUnitTestContainer({ mockDbPool: true });
     mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     householdRepository = container.get<HouseholdRepository>(DI_TYPES.HouseholdRepository);
     jest.clearAllMocks();

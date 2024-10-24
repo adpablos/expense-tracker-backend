@@ -4,7 +4,7 @@ import { DI_TYPES } from '../../../src/config/di';
 import { Category } from '../../../src/models/Category';
 import { CategoryRepository } from '../../../src/repositories/categoryRepository';
 import { AppError } from '../../../src/utils/AppError';
-import { createRepositoryTestContainer } from '../../testContainer';
+import { createUnitTestContainer } from '../../config/testContainers';
 
 // Definir interfaces para los tipos de datos
 interface CategoryRow {
@@ -45,7 +45,7 @@ describe('CategoryRepository', () => {
   let mockPool: jest.Mocked<Pool>;
 
   beforeEach(() => {
-    const container = createRepositoryTestContainer();
+    const container = createUnitTestContainer({ mockDbPool: true });
     mockPool = container.get<Pool>(DI_TYPES.DbPool) as jest.Mocked<Pool>;
     categoryRepository = container.get<CategoryRepository>(DI_TYPES.CategoryRepository);
     jest.clearAllMocks();
