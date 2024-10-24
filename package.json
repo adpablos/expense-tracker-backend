@@ -15,7 +15,7 @@
     "test:integration": "NODE_ENV=test npm run check-docker && docker-compose -f docker-compose.test.yml up -d --force-recreate && sleep 2 && NODE_ENV=test NODE_OPTIONS='-r dotenv/config' jest --config jest.integration.config.ts --rootDir . --detectOpenHandles --reporters=default --reporters=jest-summary-reporter",
     "test:integration:specific": "npm run test:integration -- -t",
     "test:integration:cleanup": "docker-compose -f docker-compose.test.yml down",
-    "test": "npm run test:unit && npm run test:integration && npm run test:integration:cleanup",    
+    "test": "npm run test:unit && npm run test:integration && npm run test:integration:cleanup",
     "export-openapi": "ts-node scripts/export-openapi.ts",
     "prepare-prod-db": "ts-node scripts/prepare_production_db.ts",
     "lint": "eslint \"src/**/*.{js,ts}\" \"tests/**/*.{js,ts}\"",
@@ -24,7 +24,9 @@
     "lint:fix": "eslint \"src/**/*.{js,ts}\" \"tests/**/*.{js,ts}\" --fix",
     "lint:fix:src": "eslint \"src/**/*.{js,ts}\" --fix",
     "lint:fix:tests": "eslint \"tests/**/*.{js,ts}\" --fix",
-    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\" \"tests/**/*.{js,jsx,ts,tsx}\""
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\" \"tests/**/*.{js,jsx,ts,tsx}\"",
+    "dev:staging": "NODE_ENV=staging ts-node --files src/index.ts",
+    "debug:staging": "NODE_ENV=staging TS_NODE_FILES=true node --inspect -r ts-node/register -r tsconfig-paths/register src/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -86,6 +88,7 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.0.0"
   }
 }
