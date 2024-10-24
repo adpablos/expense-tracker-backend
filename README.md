@@ -28,6 +28,7 @@ Table of Contents
 -   [Technical Details](#technical-details)
     -   [Folder Structure](#folder-structure)
 -   [Development Notes](#development-notes)
+-   [Troubleshooting](#troubleshooting)
 -   [License](#license)
 -   [Contact](#contact)
 
@@ -39,25 +40,22 @@ Getting Started
 -   **Node.js** (v14 or higher)
 -   **npm** (v6 or higher)
 -   **PostgreSQL** (v12 or higher)
+-   **Docker** (for integration tests)
 
 ### Installation
 
 1.  **Clone the repository:**
 
-    bash
-
-    Copy code
-
-    `git clone https://github.com/yourusername/expense-tracker-backend.git
-    cd expense-tracker-backend`
+    ```bash
+    git clone https://github.com/yourusername/expense-tracker-backend.git
+    cd expense-tracker-backend
+    ```
 
 2.  **Install the dependencies:**
 
-    bash
-
-    Copy code
-
-    `npm install`
+    ```bash
+    npm install
+    ```
 
 ### Configuration
 
@@ -65,22 +63,20 @@ Getting Started
 
     Create a `.env` file in the root directory with the following content:
 
-    env
-
-    Copy code
-
-    `DB_USER=your_db_user
+    ```env
+    DB_USER=your_db_user
     DB_HOST=your_db_host
     DB_PASSWORD=your_db_password
     DB_PORT=5432
     DB_NAME=your_db_name
-    OPENAI_API_KEY=your_openai_api_key`
+    OPENAI_API_KEY=your_openai_api_key
+    ```
 
     Replace the placeholders with your actual database credentials and OpenAI API key.
 
 2.  **Configure TypeScript:**
 
-    Ensure that your `tsconfig.json` is correctly configured. The project uses a `global.d.ts` file for extending global interfaces.
+    Ensure that your `tsconfig.json` is correctly configured. The project uses a `global.d.ts` file located in `src/types` for extending global interfaces.
 
 ### Database Initialization
 
@@ -90,13 +86,11 @@ Getting Started
 
 2.  **Initialize the database schema:**
 
-    bash
+    ```bash
+    npm run init-db
+    ```
 
-    Copy code
-
-    `npm run init-db`
-
-    This script will run the SQL scripts located in the `scripts` directory to create tables and insert initial data.
+    This script will run the SQL scripts located in the `scripts/sql` directory to create tables and insert initial data.
 
 Running the Server
 ------------------
@@ -111,7 +105,7 @@ Copy code
 
 `npm run dev`
 
-**Note:** The development server uses `ts-node` with the `--files` option to include all necessary type definitions, especially those in `global.d.ts`. This ensures that custom type extensions are recognized during runtime.
+**Note:** The development server uses `ts-node` with the `--files` option to include all necessary type definitions, especially those in `src/types/global.d.ts`. This ensures that custom type extensions are recognized during runtime.
 
 The server will be running at <http://localhost:3000>.
 
@@ -121,19 +115,15 @@ To build and start the server for production:
 
 1.  **Build the project:**
 
-    bash
-
-    Copy code
-
-    `npm run build`
+    ```bash
+    npm run build
+    ```
 
 2.  **Start the server:**
 
-    bash
-
-    Copy code
-
-    `npm start`
+    ```bash
+    npm start
+    ```
 
 Testing
 -------
@@ -145,6 +135,7 @@ bash
 Copy code
 
 `npm run test`
+
 
 This will execute all unit and integration tests using Jest.
 
@@ -168,11 +159,32 @@ Technical Details
 
 ### Folder Structure
 
+
 bash
 
 Copy code
 
-`├── src
+`├── README.md                         # Project documentation
+├── config                            # Configuration files
+│   ├── jest.config.base.ts           # Base Jest configuration
+│   ├── jest.integration.config.ts    # Jest configuration for integration tests
+│   ├── jest.unit.config.ts           # Jest configuration for unit tests
+│   ├── tsconfig.json                 # TypeScript configuration
+│   └── tsconfig.test.json            # TypeScript configuration for tests
+├── global.d.ts                       # Global type definitions
+├── openapi.json                      # OpenAPI specification
+├── package-lock.json                 # Lockfile for npm dependencies
+├── package.json                      # Project metadata and dependencies
+├── scripts                           # Utility scripts
+│   ├── debug-env.ts                  # Script for debugging environment variables
+│   ├── export-openapi.ts             # Script to export OpenAPI specification
+│   ├── init-db.ts                    # Script to initialize the database
+│   ├── migrate-expenses.ts           # Script to migrate expenses
+│   ├── prepare-production-db.ts      # Script to prepare the production database
+│   └── sql                           # SQL scripts
+│       ├── init-db-data.sql          # SQL script for inserting initial data
+│       └── init-db.sql               # SQL script for creating tables
+├── src                               # Source code
 │   ├── app.ts                        # Express app setup
 │   ├── config                        # Configuration files
 │   ├── constants.ts                  # Application constants
@@ -181,46 +193,34 @@ Copy code
 │   ├── models                        # Data models
 │   ├── repositories                  # Data access logic
 │   ├── routes                        # API routes
+│   ├── server.ts                     # Server setup
 │   ├── services                      # Business logic
 │   ├── swagger.ts                    # Swagger configuration
 │   ├── transaction-coordinators      # Transaction coordination
-│   ├── types                         # Custom type definitions
-│   ├── utils                         # Utility functions
-│   ├── index.ts                      # Application entry point
-│   └── global.d.ts                   # Global type definitions
+│   └── utils                         # Utility functions
 ├── tests                             # Test files
+│   ├── config                        # Test configuration
+│   ├── integration                   # Integration tests
 │   ├── unit                          # Unit tests
-│   └── integration                   # Integration tests
-├── scripts
-│   ├── init-db.sql                   # SQL script for creating tables
-│   ├── init-db-data.sql              # SQL script for inserting initial data
-│   ├── init-db.ts                    # Script to initialize the database
-│   └── export-openapi.ts             # Script to export OpenAPI specification
-├── .env                              # Environment variables
-├── package.json                      # Project metadata and dependencies
-├── tsconfig.json                     # TypeScript configuration
-├── jest.config.js                    # Jest configuration
-├── README.md                         # Project documentation
-└── LICENSE                           # License information`
+│   └── utils                         # Test utilities`
+
 
 Development Notes
 -----------------
 
 -   **TypeScript Configuration:**
 
-    The project uses a `global.d.ts` file located at the root directory to extend global interfaces, such as adding custom properties to the Express `Request` interface. This file is included in the TypeScript compilation through the `include` array in `tsconfig.json`.
+    The project uses a `global.d.ts` file located in `src/types` to extend global interfaces, such as adding custom properties to the Express `Request` interface. This file is included in the TypeScript compilation through the `include` array in `tsconfig.json`.
 
 -   **Running with `ts-node`:**
 
-    When running the development server using `ts-node`, it's important to include the `--files` flag in the script to ensure that all files specified in `tsconfig.json` (including `global.d.ts`) are loaded. This is configured in the `package.json` scripts:
+    When running the development server using `ts-node`, it's important to include the `--files` flag in the script to ensure that all files specified in `tsconfig.json` (including `src/types/global.d.ts`) are loaded. This is configured in the `package.json` scripts:
 
-    json
-
-    Copy code
-
-    `"scripts": {
+    ```json
+    "scripts": {
       "dev": "ts-node --files src/index.ts"
-    }`
+    }
+    ```
 
     Without the `--files` flag, `ts-node` does not load the type definitions specified in the `include` array of `tsconfig.json`, which can lead to compilation errors when using custom type extensions.
 
@@ -235,6 +235,13 @@ Development Notes
 -   **AI Integration:**
 
     The integration with the OpenAI API allows the application to process images and audio files for expense logging. Ensure that the `OPENAI_API_KEY` environment variable is set correctly.
+
+Troubleshooting
+---------------
+
+- **Port Conflicts**: If you encounter a "port is already allocated" error when running Docker, ensure no other services are using the same port or change the port in `docker-compose.test.yml`.
+
+- **Docker Issues**: Ensure Docker is running and properly configured. Use `docker info` to check the status and resolve any plugin issues.
 
 License
 -------
