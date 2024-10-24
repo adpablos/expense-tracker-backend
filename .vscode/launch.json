@@ -29,6 +29,36 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Debug Expense Tracker (Staging)",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/ts-node",
+            "runtimeArgs": [
+                "--files"
+            ],
+            "args": [
+                "${workspaceFolder}/src/index.ts"
+            ],
+            "env": {
+                "NODE_ENV": "staging",
+                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+            },
+            "envFile": "${workspaceFolder}/.env.staging",
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+            "console": "integratedTerminal",
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "!**/node_modules/**"
+            ],
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "protocol": "inspector",
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Jest Unit Tests",
             "program": "${workspaceFolder}/node_modules/.bin/jest",
             "args": ["--config", "jest.unit.config.ts", "--runInBand"],

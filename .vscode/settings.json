@@ -1,2 +1,26 @@
 {
+  "jest.jestCommandLine": "npm run test:unit --",
+  "jest.runMode": {
+    "type": "on-demand",
+    "deferred": true,
+    "coverage": false
+  },
+  "jest.nodeEnv": {
+    "NODE_ENV": "test"
+  },
+  "jest.debugMode": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "javascript.validate.enable": false,
+  "typescript.validate.enable": true,
+  "jest.disabledWorkspaceFolders": [],
+  "jest.outputConfig": {
+    "revealOn": "run",
+    "revealWithFocus": "none",
+    "clearOnRun": "none"
+  },
+  "jest.debugCodeLens.showWhenTestStateIn": ["fail", "unknown", "pass", "skip"],
+  "jest.enableCodeLens": true,
+  "jest.enableInlineErrorMessages": true,
+"jest.restartJestOnSnapshotUpdate": true,
+"testing.openTesting": "neverOpen"
 }
