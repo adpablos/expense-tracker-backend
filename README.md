@@ -157,14 +157,11 @@ Technical Details
 -   **InversifyJS** for dependency injection.
 -   **ts-node** for running TypeScript directly.
 
+
 ### Folder Structure
 
-
-bash
-
-Copy code
-
-`├── README.md                         # Project documentation
+```
+├── README.md                         # Project documentation
 ├── config                            # Configuration files
 │   ├── jest.config.base.ts           # Base Jest configuration
 │   ├── jest.integration.config.ts    # Jest configuration for integration tests
@@ -202,7 +199,9 @@ Copy code
 │   ├── config                        # Test configuration
 │   ├── integration                   # Integration tests
 │   ├── unit                          # Unit tests
-│   └── utils                         # Test utilities`
+│   └── utils                         # Test utilities
+```
+
 
 
 Development Notes
