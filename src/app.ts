@@ -23,9 +23,10 @@ export function createApp(container: Container): express.Application {
   const app = express();
 
   const allowedOrigins = [
-    'https://expense-tracker.alexdepablos.com',
+    'https://expense-tracker.alexdepablos.com', // Production frontend deployment
     'https://expense-tracker-pwa-eta.vercel.app', // Remote deployment
-    'http://localhost:3001',
+    'https://expense-tracker-backend-staging.up.railway.app', // Staging backend deployment
+    'http://localhost:3001', // local development
     'http://localhost:3002', // local development
   ];
 
