@@ -11,18 +11,29 @@ const categoryHierarchyService = new CategoryHierarchyService(pool);
 
 async function extracted(functionCall: OpenAI.ChatCompletionMessageToolCall.Function | undefined) {
     if (functionCall && functionCall.name === "log_expense") {
-        const {date, amount, category, subcategory, notes} = JSON.parse(functionCall.arguments);
+        try {
+            const {date, amount, category, subcategory, notes} = JSON.parse(functionCall.arguments);
 
-        const newExpense = new Expense(
-            notes || 'Expense from receipt',
-            parseFloat(amount),
-            category,
-            subcategory,
-            new Date(date)
-        );
+            // Validate required fields
+            if (!date || !amount || !category) {
+                throw new Error('Missing required fields: date, amount, or category');
+            }
 
-        await expenseService.createExpense(newExpense);
-        return newExpense;
+            const newExpense = new Expense(
+                notes || 'Expense from receipt',
+                parseFloat(amount),
+                category,
+                subcategory,
+                new Date(date)
+            );
+
+            await expenseService.createExpense(newExpense);
+            return newExpense;
+        } catch (error) {
+            console.error('Error parsing function call arguments:', error);
+            console.error('Raw arguments:', functionCall.arguments);
+            throw new Error(`Failed to parse AI response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     } else {
         return null;
     }
