@@ -32,7 +32,8 @@ export const processReceipt = async (base64Image: string) => {
     const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories();
     const currentDate = new Date().toISOString();
 
-    const response = await clientOpenAI.chat.completions.create({
+    try {
+        const response = await clientOpenAI.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
             {
@@ -95,10 +96,16 @@ export const processReceipt = async (base64Image: string) => {
                 }
             }
         ],
-    });
+        });
 
-    const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
-    return await extracted(functionCall);
+        const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
+        return await extracted(functionCall);
+    } catch (error) {
+        if (error instanceof OpenAI.APIConnectionError) {
+            console.error('OpenAI connection failed while processing receipt', error);
+        }
+        throw error;
+    }
 };
 
 export const transcribeAudio = async (filePath: string): Promise<string> => {
@@ -106,23 +113,31 @@ export const transcribeAudio = async (filePath: string): Promise<string> => {
         throw new Error('Invalid or empty audio file');
     }
 
-    const transcription = await clientOpenAI.audio.transcriptions.create({
-        model: "whisper-1",
-        file: fs.createReadStream(filePath),
-        response_format: "verbose_json",
-        timestamp_granularities: ["word"]
-    });
+    try {
+        const transcription = await clientOpenAI.audio.transcriptions.create({
+            model: "whisper-1",
+            file: fs.createReadStream(filePath),
+            response_format: "verbose_json",
+            timestamp_granularities: ["word"]
+        });
 
-    return transcription.text;
+        return transcription.text;
+    } catch (error) {
+        if (error instanceof OpenAI.APIConnectionError) {
+            console.error('OpenAI connection failed while transcribing audio', error);
+        }
+        throw error;
+    }
 };
 
 export const analyzeTranscription = async (transcription: string): Promise<Expense | null> => {
     const categoriesString = await categoryHierarchyService.getCategoriesAndSubcategories();
     const currentDate = new Date().toISOString();
 
-    const response = await clientOpenAI.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+    try {
+        const response = await clientOpenAI.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
             {
                 role: "user",
                 content: [
@@ -176,9 +191,15 @@ export const analyzeTranscription = async (transcription: string): Promise<Expen
                     }
                 }
             }
-        ],
-    });
+            ],
+        });
 
-    const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
-    return await extracted(functionCall);
+        const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
+        return await extracted(functionCall);
+    } catch (error) {
+        if (error instanceof OpenAI.APIConnectionError) {
+            console.error('OpenAI connection failed while analyzing transcription', error);
+        }
+        throw error;
+    }
 };

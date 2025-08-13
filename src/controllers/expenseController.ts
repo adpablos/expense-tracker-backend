@@ -169,7 +169,7 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
             return res.status(400).send('Invalid audio file.');
         }
 
-        let expenseDetails;
+        let expenseDetails: any;
         if (req.file.mimetype.startsWith('image')) {
             const base64Image = encodeImage(newFilePath);
             expenseDetails = await processReceipt(base64Image);
@@ -191,7 +191,17 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         }
 
         if (expenseDetails) {
-            res.status(200).json({message: 'Expense logged successfully.', expense: expenseDetails});
+            // Persist the expense details returned by OpenAI
+            const newExpense = new Expense(
+                expenseDetails.notes || 'Expense from receipt',
+                Number(expenseDetails.amount),
+                expenseDetails.category,
+                expenseDetails.subcategory,
+                new Date(expenseDetails.expenseDatetime)
+            );
+
+            const savedExpense = await expenseService.createExpense(newExpense);
+            res.status(200).json({message: 'Expense logged successfully.', expense: savedExpense});
         } else {
             res.status(422).json({
                 message: 'No expense logged.',
@@ -200,7 +210,8 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         }
     } catch (error) {
         logger.error('Error processing the file: %s', error);
-        res.status(500).send('Error processing the file.');
+        const message = error instanceof Error ? error.message : 'Error processing the file';
+        res.status(500).send(message.endsWith('.') ? message : `${message}.`);
     } finally {
         // Cleaning up temporary files
         try {

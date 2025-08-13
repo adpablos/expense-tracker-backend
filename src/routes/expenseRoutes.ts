@@ -356,6 +356,7 @@ router.delete('/:id', deleteExpense);
  *       500:
  *         description: Error processing the file.
  */
-router.post('/upload', upload.single('file'), uploadExpense);
+// Accept uploads under the `receipt` field to align with client expectations
+router.post('/upload', upload.single('receipt'), uploadExpense);
 
 export default router;
