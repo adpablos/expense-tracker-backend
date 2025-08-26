@@ -4,6 +4,7 @@ import expenseRoutes from '../routes/expenseRoutes';
 import multer from 'multer';
 import { ExpenseService } from '../data/expenseService';
 import { processReceipt } from '../external/openaiService';
+import path from 'path';
 
 const app: Application = express();
 multer({ dest: 'uploads/' });
@@ -174,28 +175,18 @@ describe('Expense Routes', () => {
     });
 
     it('should upload a receipt and log an expense', async () => {
-        (processReceipt as jest.Mock).mockImplementation(() =>
-            Promise.resolve({
-                expenseDatetime: '2024-07-21T00:00:00Z',  // Fecha en formato ISO 8601
-                amount: 100.00,
-                category: 'Casa',
-                subcategory: 'Mantenimiento',
-                notes: 'Monthly maintenance fee'
-            })
-        );
-
-        ExpenseService.prototype.createExpense = jest.fn().mockResolvedValue({
+        (processReceipt as jest.Mock).mockResolvedValue({
             id: '2',
             description: 'Monthly maintenance fee',
             amount: 100.00,
             category: 'Casa',
             subcategory: 'Mantenimiento',
-            expenseDatetime: '2024-07-21T00:00:00Z'  // Fecha en formato ISO 8601
+            expenseDatetime: '2024-07-21T00:00:00Z'
         });
 
         const res = await request(app)
             .post('/api/expenses/upload')
-            .attach('receipt', 'path/to/test/receipt.jpg');
+            .attach('file', path.join(__dirname, 'fixtures', 'receipt.jpg'));
 
         expect(res.statusCode).toEqual(200);
         expect(res.body).toHaveProperty('message', 'Expense logged successfully.');
@@ -224,9 +215,9 @@ describe('Expense Routes', () => {
 
         const res = await request(app)
             .post('/api/expenses/upload')
-            .attach('receipt', 'path/to/test/receipt.jpg');
+            .attach('file', path.join(__dirname, 'fixtures', 'receipt.jpg'));
 
         expect(res.statusCode).toEqual(500);
-        expect(res.text).toBe('Error processing the image.');
+        expect(res.text).toBe('Error processing the file.');
     });
 });
