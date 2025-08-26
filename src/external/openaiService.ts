@@ -11,6 +11,8 @@ import {
     ResponsesCreateResponse,
     ToolCallContent,
 } from "../types/openaiResponses";
+import { APIConnectionError, APIConnectionTimeoutError } from "openai";
+import { AppError } from "../utils/AppError";
 
 const expenseService = new ExpenseService(pool);
 const categoryHierarchyService = new CategoryHierarchyService(pool);
@@ -36,21 +38,28 @@ const responsesClient: ResponsesClient = {
 };
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): Promise<T> {
-    let lastError: unknown = new Error('Retries exhausted');
     for (let attempt = 0; attempt < retries; attempt++) {
         try {
             return await fn();
         } catch (error: unknown) {
-            lastError = error;
-            if (!(error instanceof Error) || error.name !== 'APIConnectionError' || attempt === retries - 1) {
+            const isRetryable =
+                error instanceof APIConnectionError ||
+                error instanceof APIConnectionTimeoutError;
+
+            if (!isRetryable) {
                 throw error;
+            }
+
+            if (attempt === retries - 1) {
+                throw new AppError('Failed to connect to OpenAI', 503);
             }
 
             await new Promise((res) => setTimeout(res, delayMs * (attempt + 1)));
         }
     }
 
-    throw lastError;
+    // Should never reach here
+    throw new AppError('Failed to connect to OpenAI', 503);
 }
 
 let openAiQueue: Promise<unknown> = Promise.resolve();
