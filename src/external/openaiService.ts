@@ -12,9 +12,19 @@ import {
 
 const expenseService = new ExpenseService(pool);
 const categoryHierarchyService = new CategoryHierarchyService(pool);
-const responsesClient: ResponsesClient = (clientOpenAI as unknown as {
-    responses: ResponsesClient;
-}).responses;
+function hasResponsesClient(obj: unknown): obj is { responses: ResponsesClient } {
+    return (
+        !!obj &&
+        typeof obj === 'object' &&
+        'responses' in obj &&
+        typeof (obj as { responses: unknown }).responses === 'object'
+    );
+}
+
+if (!hasResponsesClient(clientOpenAI)) {
+    throw new Error("clientOpenAI does not have a valid 'responses' property.");
+}
+const responsesClient: ResponsesClient = clientOpenAI.responses;
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): Promise<T> {
     let lastError: unknown = new Error('Retries exhausted');
@@ -23,7 +33,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): P
             return await fn();
         } catch (error: unknown) {
             lastError = error;
-            if ((error as { name?: string })?.name !== 'APIConnectionError' || attempt === retries - 1) {
+            if (!(error instanceof Error) || error.name !== 'APIConnectionError' || attempt === retries - 1) {
                 throw error;
             }
 
