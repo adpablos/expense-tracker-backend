@@ -12,6 +12,7 @@ import {analyzeTranscription, processReceipt, transcribeAudio} from '../external
 import path from 'path';
 import {AppError} from '../utils/AppError';
 import {promisify} from 'util';
+import OpenAI from 'openai';
 
 const expenseService = new ExpenseService(pool);
 
@@ -200,6 +201,9 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         }
     } catch (error) {
         logger.error('Error processing the file: %s', error);
+        if (error instanceof OpenAI.APIConnectionError) {
+            return res.status(503).send('OpenAI service is currently unavailable');
+        }
         res.status(500).send('Error processing the file.');
     } finally {
         // Cleaning up temporary files
