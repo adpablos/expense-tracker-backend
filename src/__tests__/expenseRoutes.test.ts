@@ -5,6 +5,7 @@ import multer from 'multer';
 import { ExpenseService } from '../data/expenseService';
 import { processReceipt } from '../external/openaiService';
 import path from 'path';
+import OpenAI from 'openai';
 
 const app: Application = express();
 multer({ dest: 'uploads/' });
@@ -208,16 +209,16 @@ describe('Expense Routes', () => {
         expect(res.text).toBe('No file uploaded.');
     });
 
-    it('should return 500 if there is an error processing the image', async () => {
-        (processReceipt as jest.Mock).mockImplementation(() =>
-            Promise.reject(new Error('Error processing the image'))
+    it('should return 503 if OpenAI service is unavailable', async () => {
+        (processReceipt as jest.Mock).mockRejectedValue(
+            new OpenAI.APIConnectionError({ message: 'Connection error' })
         );
 
         const res = await request(app)
             .post('/api/expenses/upload')
             .attach('file', path.join(__dirname, 'fixtures', 'receipt.jpg'));
 
-        expect(res.statusCode).toEqual(500);
-        expect(res.text).toBe('Error processing the file.');
+        expect(res.statusCode).toEqual(503);
+        expect(res.text).toBe('OpenAI service is currently unavailable');
     });
 });
