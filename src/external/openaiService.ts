@@ -17,10 +17,12 @@ const responsesClient: ResponsesClient = (clientOpenAI as unknown as {
 }).responses;
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): Promise<T> {
+    let lastError: unknown = new Error('Retries exhausted');
     for (let attempt = 0; attempt < retries; attempt++) {
         try {
             return await fn();
         } catch (error: unknown) {
+            lastError = error;
             if ((error as { name?: string })?.name !== 'APIConnectionError' || attempt === retries - 1) {
                 throw error;
             }
@@ -29,7 +31,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): P
         }
     }
 
-    throw new Error('Retries exhausted');
+    throw lastError;
 }
 
 let openAiQueue: Promise<unknown> = Promise.resolve();
@@ -39,8 +41,11 @@ async function enqueueOpenAI<T>(fn: () => Promise<T>): Promise<T> {
     return next;
 }
 async function extracted(functionCall: FunctionCall | undefined) {
-    if (functionCall && functionCall.name === "log_expense") {
-        const {date, amount, category, subcategory, notes} = JSON.parse(functionCall?.arguments ?? "{}");
+    if (functionCall && functionCall.name === 'log_expense') {
+        if (!functionCall.arguments) {
+            throw new Error('Missing arguments in functionCall for log_expense');
+        }
+        const { date, amount, category, subcategory, notes } = JSON.parse(functionCall.arguments);
 
         const newExpense = new Expense(
             notes || 'Expense from receipt',
@@ -52,9 +57,8 @@ async function extracted(functionCall: FunctionCall | undefined) {
 
         await expenseService.createExpense(newExpense);
         return newExpense;
-    } else {
-        return null;
     }
+    return null;
 }
 
 export const processReceipt = async (base64Image: string) => {
