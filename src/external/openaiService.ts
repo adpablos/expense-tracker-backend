@@ -16,11 +16,22 @@ const expenseService = new ExpenseService(pool);
 const categoryHierarchyService = new CategoryHierarchyService(pool);
 
 const responsesClient: ResponsesClient = {
-    create(params: ResponsesCreateParams): Promise<ResponsesCreateResponse> {
-        return clientOpenAI.post<ResponsesCreateParams, ResponsesCreateResponse>(
-            '/responses',
-            { body: params }
-        );
+    async create(params: ResponsesCreateParams): Promise<ResponsesCreateResponse> {
+        const response = await fetch(`${clientOpenAI.baseURL}/responses`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${clientOpenAI.apiKey}`,
+            },
+            body: JSON.stringify(params),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`OpenAI API error ${response.status}: ${errorText}`);
+        }
+
+        return (await response.json()) as ResponsesCreateResponse;
     },
 };
 
