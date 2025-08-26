@@ -7,24 +7,22 @@ import fs from "fs";
 import {
     FunctionCall,
     ResponsesClient,
+    ResponsesCreateParams,
+    ResponsesCreateResponse,
     ToolCallContent,
 } from "../types/openaiResponses";
 
 const expenseService = new ExpenseService(pool);
 const categoryHierarchyService = new CategoryHierarchyService(pool);
-function hasResponsesClient(obj: unknown): obj is { responses: ResponsesClient } {
-    return (
-        !!obj &&
-        typeof obj === 'object' &&
-        'responses' in obj &&
-        typeof (obj as { responses: unknown }).responses === 'object'
-    );
-}
 
-if (!hasResponsesClient(clientOpenAI)) {
-    throw new Error("clientOpenAI does not have a valid 'responses' property.");
-}
-const responsesClient: ResponsesClient = clientOpenAI.responses;
+const responsesClient: ResponsesClient = {
+    create(params: ResponsesCreateParams): Promise<ResponsesCreateResponse> {
+        return clientOpenAI.post<ResponsesCreateParams, ResponsesCreateResponse>(
+            '/responses',
+            { body: params }
+        );
+    },
+};
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 500): Promise<T> {
     let lastError: unknown = new Error('Retries exhausted');
