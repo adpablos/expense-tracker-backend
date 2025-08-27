@@ -201,8 +201,16 @@ export const uploadExpense = async (req: Request, res: Response, next: NextFunct
         }
     } catch (error) {
         logger.error('Error processing the file: %s', error);
-        if (error instanceof OpenAI.APIConnectionError) {
+        const isAppError = error instanceof AppError || (error as any)?.name === 'AppError';
+        const statusCode = (error as any)?.statusCode;
+        if (
+            error instanceof OpenAI.APIConnectionError ||
+            (isAppError && statusCode === 503)
+        ) {
             return res.status(503).send('OpenAI service is currently unavailable');
+        }
+        if (isAppError && typeof statusCode === 'number') {
+            return res.status(statusCode).send((error as Error).message);
         }
         res.status(500).send('Error processing the file.');
     } finally {

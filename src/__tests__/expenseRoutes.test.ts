@@ -3,7 +3,7 @@ import express, { Application } from 'express';
 import expenseRoutes from '../routes/expenseRoutes';
 import multer from 'multer';
 import { ExpenseService } from '../data/expenseService';
-import { processReceipt } from '../external/openaiService';
+import * as openaiService from '../external/openaiService';
 import path from 'path';
 import OpenAI from 'openai';
 
@@ -12,16 +12,14 @@ multer({ dest: 'uploads/' });
 app.use(express.json());
 app.use('/api/expenses', expenseRoutes);
 
-// Mock OpenAI service
-jest.mock('../external/openaiService');
 
 const mockExpense = {
     id: '1',
     description: 'Test expense',
-    amount: 100.00,
+    amount: 100.0,
     category: 'Casa',
     subcategory: 'Mantenimiento',
-    expenseDatetime: '2024-07-21T00:00:00Z' // Actualización para usar el formato ISO 8601
+    expenseDatetime: new Date('2024-07-21T00:00:00Z'), // Fecha en formato ISO 8601
 };
 
 describe('Expense Routes', () => {
@@ -176,18 +174,20 @@ describe('Expense Routes', () => {
     });
 
     it('should upload a receipt and log an expense', async () => {
-        (processReceipt as jest.Mock).mockResolvedValue({
+        const spy = jest.spyOn(openaiService, 'processReceipt').mockResolvedValue({
             id: '2',
             description: 'Monthly maintenance fee',
-            amount: 100.00,
+            amount: 100.0,
             category: 'Casa',
             subcategory: 'Mantenimiento',
-            expenseDatetime: '2024-07-21T00:00:00Z'
-        });
+            expenseDatetime: new Date('2024-07-21T00:00:00Z'),
+        } as any);
 
         const res = await request(app)
             .post('/api/expenses/upload')
             .attach('file', path.join(__dirname, 'fixtures', 'receipt.jpg'));
+
+        spy.mockRestore();
 
         expect(res.statusCode).toEqual(200);
         expect(res.body).toHaveProperty('message', 'Expense logged successfully.');
@@ -197,7 +197,7 @@ describe('Expense Routes', () => {
             amount: 100.00,
             category: 'Casa',
             subcategory: 'Mantenimiento',
-            expenseDatetime: '2024-07-21T00:00:00Z'  // Fecha en formato ISO 8601
+            expenseDatetime: '2024-07-21T00:00:00.000Z'  // Fecha en formato ISO 8601
         });
     });
 
@@ -210,13 +210,35 @@ describe('Expense Routes', () => {
     });
 
     it('should return 503 if OpenAI service is unavailable', async () => {
-        (processReceipt as jest.Mock).mockRejectedValue(
-            new OpenAI.APIConnectionError({ message: 'Connection error' })
-        );
+        const spy = jest
+            .spyOn(openaiService, 'processReceipt')
+            .mockRejectedValue(new OpenAI.APIConnectionError({ message: 'Connection error' }));
 
         const res = await request(app)
             .post('/api/expenses/upload')
             .attach('file', path.join(__dirname, 'fixtures', 'receipt.jpg'));
+
+        spy.mockRestore();
+
+        expect(res.statusCode).toEqual(503);
+        expect(res.text).toBe('OpenAI service is currently unavailable');
+    });
+
+    it('should return 503 if OpenAI service fails after retries', async () => {
+        const err = Object.assign(new Error('Failed to connect to OpenAI'), {
+            statusCode: 503,
+            name: 'AppError',
+            isOperational: true,
+        });
+        const spy = jest
+            .spyOn(openaiService, 'processReceipt')
+            .mockRejectedValue(err);
+
+        const res = await request(app)
+            .post('/api/expenses/upload')
+            .attach('file', path.join(__dirname, 'fixtures', 'receipt.jpg'));
+
+        spy.mockRestore();
 
         expect(res.statusCode).toEqual(503);
         expect(res.text).toBe('OpenAI service is currently unavailable');
