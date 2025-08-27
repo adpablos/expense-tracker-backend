@@ -9,8 +9,8 @@ const colors = {
     debug: 'blue'
 };
 
-const customFormat = format.printf(({timestamp, level, message, ...metadata}) => {
-    const coloredLevel = format.colorize().colorize(level, level.toUpperCase());
+const customFormat = format.printf(({ timestamp, level, message, ...metadata }) => {
+    const coloredLevel = level.toUpperCase();
     let msg = `${timestamp} ${coloredLevel}: ${message}`;
     if (Object.keys(metadata).length > 1) {
         msg += ` ${JSON.stringify(metadata)}`;
@@ -19,7 +19,7 @@ const customFormat = format.printf(({timestamp, level, message, ...metadata}) =>
 });
 
 const logger = createLogger({
-    level: 'info',
+    level: process.env.LOG_LEVEL || 'info',
     format: format.combine(
         format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss'
