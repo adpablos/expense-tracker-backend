@@ -22,5 +22,6 @@
   "jest.enableCodeLens": true,
   "jest.enableInlineErrorMessages": true,
 "jest.restartJestOnSnapshotUpdate": true,
-"testing.openTesting": "neverOpen"
+"testing.openTesting": "neverOpen",
+"testing.automaticallyOpenTestResults": "neverOpen"
 }

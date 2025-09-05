@@ -15,7 +15,7 @@
             "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/ts-node",
             "args": ["--files", "${workspaceFolder}/src/index.ts"],
             "env": {
-                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+                "TS_NODE_PROJECT": "${workspaceFolder}/config/tsconfig.json"
             },
             "sourceMaps": true,
             "outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -24,7 +24,7 @@
                 "${workspaceFolder}/**",
                 "!**/node_modules/**"
             ],
-            "preLaunchTask": "tsc: build - tsconfig.json"
+            "preLaunchTask": "tsc: build - config/tsconfig.json"
         },
         {
             "type": "node",
@@ -42,7 +42,7 @@
             ],
             "env": {
                 "NODE_ENV": "staging",
-                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+                "TS_NODE_PROJECT": "${workspaceFolder}/config/tsconfig.json"
             },
             "envFile": "${workspaceFolder}/.env.staging",
             "sourceMaps": true,
@@ -52,7 +52,7 @@
                 "${workspaceFolder}/**",
                 "!**/node_modules/**"
             ],
-            "preLaunchTask": "tsc: build - tsconfig.json",
+            "preLaunchTask": "tsc: build - config/tsconfig.json",
             "protocol": "inspector",
             "internalConsoleOptions": "openOnSessionStart"
         },
@@ -61,20 +61,20 @@
             "request": "launch",
             "name": "Jest Unit Tests",
             "program": "${workspaceFolder}/node_modules/.bin/jest",
-            "args": ["--config", "jest.unit.config.ts", "--runInBand"],
+            "args": ["--config", "config/jest.unit.config.ts", "--runInBand"],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
-          },
-          {
+        },
+        {
             "type": "node",
             "request": "launch",
             "name": "Jest Integration Tests",
             "program": "${workspaceFolder}/node_modules/.bin/jest",
-            "args": ["--config", "jest.integration.config.ts", "--runInBand"],
+            "args": ["--config", "config/jest.integration.config.ts", "--runInBand"],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
-          },
-          {
+        },
+        {
             "type": "node",
             "request": "launch",
             "name": "Jest Specific Integration Test",
@@ -91,7 +91,7 @@
             ],
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
-          }
+        }
     ],
     "inputs": [
       {
