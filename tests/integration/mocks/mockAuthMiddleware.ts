@@ -103,5 +103,8 @@ export class MockAuthMiddleware extends AuthMiddleware {
 }
 
 export function mockAuthMiddleware(container: Container): void {
-  container.rebind<AuthMiddleware>(DI_TYPES.AuthMiddleware).to(MockAuthMiddleware);
+  if (container.isBound(DI_TYPES.AuthMiddleware)) {
+    container.unbind(DI_TYPES.AuthMiddleware);
+  }
+  container.bind<AuthMiddleware>(DI_TYPES.AuthMiddleware).to(MockAuthMiddleware);
 }

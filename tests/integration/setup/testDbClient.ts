@@ -46,10 +46,11 @@ export const initializeDatabase = async (): Promise<void> => {
         logger.info('Test database tables not found, initializing schema...');
 
         // Leer el script SQL
-        const initSQL = fs.readFileSync(
-          path.join(__dirname, '../../../scripts/init-db.sql'),
-          'utf8'
+        const schemaFile = path.join(
+          __dirname,
+          '../../../scripts/sql/01_init-db.sql'
         );
+        const initSQL = fs.readFileSync(schemaFile, 'utf8');
 
         // Ejecutar cada comando por separado
         const commands = initSQL.split(';').filter((cmd) => cmd.trim().length > 0);

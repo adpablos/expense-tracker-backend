@@ -4,7 +4,6 @@ import axios from 'axios';
 import express from 'express';
 import request from 'supertest';
 
-import logger from '../../../src/config/logger';
 import { errorHandler } from '../../../src/middleware/errorHandler';
 import authHelperRoutes from '../../../src/routes/authHelperRoutes';
 

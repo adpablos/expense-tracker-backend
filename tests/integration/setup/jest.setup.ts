@@ -75,5 +75,11 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await testDbClient.end();
-  await container.unbindAll();
+  if (container) {
+    try {
+      container.unbindAll();
+    } catch {
+      // ignore
+    }
+  }
 });
