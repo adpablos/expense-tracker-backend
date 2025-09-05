@@ -21,6 +21,135 @@ export class OpenAIService {
     private categoryHierarchyService: CategoryHierarchyService
   ) {}
 
+  private getLogExpenseTool() {
+    return [
+      {
+        type: 'function' as const,
+        function: {
+          name: 'log_expense',
+          description: 'Logs an expense in the system',
+          parameters: {
+            type: 'object',
+            properties: {
+              date: { type: 'string', description: 'Date of the expense' },
+              amount: { type: 'number', description: 'Amount of the expense' },
+              category: { type: 'string', description: 'Category of the expense' },
+              subcategory: { type: 'string', description: 'Subcategory of the expense' },
+              notes: {
+                type: 'string',
+                description:
+                  'Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense',
+              },
+            },
+            required: ['date', 'amount', 'category'],
+          },
+        },
+      },
+    ];
+  }
+
+  private buildReceiptMessages(
+    base64Image: string,
+    categoriesString: string,
+    currentDateIso: string
+  ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    return [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Extract the receipt details and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n${categoriesString}\n\nTo determine the date, use what is explicitly mentioned in the image, otherwise, use the current date by default (${currentDateIso}).\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: "2024-07-21", amount: 100.00, category: "Casa", subcategory: "Mantenimiento", notes: "Monthly maintenance fee"})\n`,
+          },
+          {
+            type: 'image_url',
+            image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+          },
+        ],
+      },
+    ];
+  }
+
+  private buildTranscriptionMessages(
+    transcription: string,
+    categoriesString: string,
+    currentDateIso: string
+  ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+    return [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Extract the transcription details: ${transcription} and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n${categoriesString}\n\nTo determine the date, use what is explicitly mentioned in the transcription, otherwise, use the current date by default (${currentDateIso}).\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: "2024-07-21", amount: 100.00, category: "Casa", subcategory: "Mantenimiento", notes: "Monthly maintenance fee"})\n`,
+          },
+        ],
+      },
+    ];
+  }
+
+  private async callModelForFunctionCall(
+    messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
+  ): Promise<OpenAI.ChatCompletionMessageToolCall.Function | undefined> {
+    type ResponsesOutput = {
+      output?: Array<{ content?: Array<{ type: string; name?: string; input?: unknown }> }>;
+    };
+
+    const input = messages.map((m) => {
+      type MsgContent =
+        | { type: 'text'; text?: string }
+        | { type: 'image_url'; image_url?: { url?: string } };
+      const raw = (m as { content?: unknown }).content;
+      const items: MsgContent[] = Array.isArray(raw) ? (raw as MsgContent[]) : [];
+      const converted = items
+        .map((it) => {
+          if (it.type === 'text' && typeof it.text === 'string') {
+            return { type: 'input_text', text: it.text } as const;
+          }
+          if (it.type === 'image_url' && typeof it.image_url?.url === 'string') {
+            return { type: 'input_image', image_url: it.image_url.url } as const;
+          }
+          return undefined;
+        })
+        .filter(
+          (
+            v
+          ): v is
+            | { type: 'input_text'; text: string }
+            | { type: 'input_image'; image_url: string } => Boolean(v)
+        );
+      return { role: m.role, content: converted } as const;
+    });
+
+    const resp = (await (
+      openaiClient as unknown as {
+        responses: { create: (p: unknown) => Promise<ResponsesOutput> };
+      }
+    ).responses.create({
+      model: config.openai.model,
+      input,
+      temperature: 0.3,
+      max_output_tokens: 800,
+      tool_choice: 'auto',
+      tools: this.getLogExpenseTool(),
+    })) as ResponsesOutput;
+
+    const toolUse = resp.output
+      ?.flatMap((o) => o.content || [])
+      ?.find((c: unknown) => (c as { type?: string })?.type === 'tool_use') as
+      | { type: 'tool_use'; name?: string; input?: unknown }
+      | undefined;
+
+    if (toolUse?.name === 'log_expense') {
+      return {
+        name: toolUse.name,
+        arguments: JSON.stringify(toolUse.input ?? {}),
+      } as unknown as OpenAI.ChatCompletionMessageToolCall.Function;
+    }
+
+    return undefined;
+  }
+
   private async extractExpenseFromFunctionCall(
     functionCall: OpenAI.ChatCompletionMessageToolCall.Function | undefined,
     householdId: string,
@@ -53,71 +182,10 @@ export class OpenAIService {
     try {
       const categoriesString =
         await this.categoryHierarchyService.getCategoriesAndSubcategories(householdId);
-      const currentDate = new Date().toISOString();
+      const currentDateIso = new Date().toISOString();
 
-      const response = await openaiClient.chat.completions.create({
-        model: config.openai.model, // Usar la configuración centralizada
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Extract the receipt details and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n${categoriesString}\n\nTo determine the date, use what is explicitly mentioned in the image, otherwise, use the current date by default (${currentDate}).\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: "2024-07-21", amount: 100.00, category: "Casa", subcategory: "Mantenimiento", notes: "Monthly maintenance fee"})\n`,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64Image}`,
-                },
-              },
-            ],
-          },
-        ],
-        temperature: 1,
-        max_tokens: 256,
-        top_p: 1,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'log_expense',
-              description: 'Logs an expense in the system',
-              parameters: {
-                type: 'object',
-                properties: {
-                  date: {
-                    type: 'string',
-                    description: 'Date of the expense',
-                  },
-                  amount: {
-                    type: 'number',
-                    description: 'Amount of the expense',
-                  },
-                  category: {
-                    type: 'string',
-                    description: 'Category of the expense',
-                  },
-                  subcategory: {
-                    type: 'string',
-                    description: 'Subcategory of the expense',
-                  },
-                  notes: {
-                    type: 'string',
-                    description:
-                      'Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense',
-                  },
-                },
-                required: ['date', 'amount', 'category'],
-              },
-            },
-          },
-        ],
-      });
-
-      const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
+      const messages = this.buildReceiptMessages(base64Image, categoriesString, currentDateIso);
+      const functionCall = await this.callModelForFunctionCall(messages);
       return await this.extractExpenseFromFunctionCall(functionCall, householdId, userId);
     } catch (error) {
       logger.error('Error processing receipt', {
@@ -159,65 +227,14 @@ export class OpenAIService {
     try {
       const categoriesString =
         await this.categoryHierarchyService.getCategoriesAndSubcategories(householdId);
-      const currentDate = new Date().toISOString();
+      const currentDateIso = new Date().toISOString();
 
-      const response = await openaiClient.chat.completions.create({
-        model: config.openai.model,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Extract the transcription details: ${transcription} and determine if we should log this expense. If yes, call the log_expense function.\n\nTo determine the category and subcategory, take into account that now we have the followings Categories and Subcategories: \n\n${categoriesString}\n\nTo determine the date, use what is explicitly mentioned in the transcription, otherwise, use the current date by default (${currentDate}).\n\nThe log_expense function should be called with the following parameters: \n- date: string (Date of the expense) \n- amount: number (Amount of the expense) \n- category: string (Category of the expense) \n- subcategory: string (Subcategory of the expense) \n- notes: string (Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense)\n\nExample call to log_expense: log_expense({date: "2024-07-21", amount: 100.00, category: "Casa", subcategory: "Mantenimiento", notes: "Monthly maintenance fee"})\n`,
-              },
-            ],
-          },
-        ],
-        temperature: 1,
-        max_tokens: 256,
-        top_p: 1,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'log_expense',
-              description: 'Logs an expense in the system',
-              parameters: {
-                type: 'object',
-                properties: {
-                  date: {
-                    type: 'string',
-                    description: 'Date of the expense',
-                  },
-                  amount: {
-                    type: 'number',
-                    description: 'Amount of the expense',
-                  },
-                  category: {
-                    type: 'string',
-                    description: 'Category of the expense',
-                  },
-                  subcategory: {
-                    type: 'string',
-                    description: 'Subcategory of the expense',
-                  },
-                  notes: {
-                    type: 'string',
-                    description:
-                      'Additional notes for the expense, such as the name of the store, items purchased, or any specific context about the expense',
-                  },
-                },
-                required: ['date', 'amount', 'category'],
-              },
-            },
-          },
-        ],
-      });
-
-      const functionCall = response.choices?.[0]?.message?.tool_calls?.[0]?.function;
+      const messages = this.buildTranscriptionMessages(
+        transcription,
+        categoriesString,
+        currentDateIso
+      );
+      const functionCall = await this.callModelForFunctionCall(messages);
       return await this.extractExpenseFromFunctionCall(functionCall, householdId, userId);
     } catch (error) {
       logger.error('Error analyzing transcription', {

@@ -14,10 +14,8 @@ jest.mock('../../../../src/services/categoryHierarchyService');
 jest.mock('../../../../src/services/external/clients/openaiClient', () => ({
   __esModule: true,
   default: {
-    chat: {
-      completions: {
-        create: jest.fn(),
-      },
+    responses: {
+      create: jest.fn(),
     },
     audio: {
       transcriptions: {
@@ -47,28 +45,25 @@ describe('OpenAIService', () => {
   describe('processReceipt', () => {
     it('should process receipt and create expense', async () => {
       const mockResponse = {
-        choices: [
+        output: [
           {
-            message: {
-              tool_calls: [
-                {
-                  function: {
-                    name: 'log_expense',
-                    arguments: JSON.stringify({
-                      date: '2023-01-01',
-                      amount: 100,
-                      category: 'Food',
-                      subcategory: 'Groceries',
-                      notes: 'Weekly groceries',
-                    }),
-                  },
+            content: [
+              {
+                type: 'tool_use',
+                name: 'log_expense',
+                input: {
+                  date: '2023-01-01',
+                  amount: 100,
+                  category: 'Food',
+                  subcategory: 'Groceries',
+                  notes: 'Weekly groceries',
                 },
-              ],
-            },
+              },
+            ],
           },
         ],
       };
-      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.responses.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Food: Groceries, Restaurants'
       );
@@ -84,15 +79,17 @@ describe('OpenAIService', () => {
 
     it('should return null if no expense is extracted', async () => {
       const mockResponse = {
-        choices: [
+        output: [
           {
-            message: {
-              tool_calls: [],
-            },
+            content: [
+              {
+                type: 'message',
+              },
+            ],
           },
         ],
       };
-      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.responses.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Food: Groceries, Restaurants'
       );
@@ -104,7 +101,7 @@ describe('OpenAIService', () => {
     });
 
     it('should throw AppError if OpenAI API call fails', async () => {
-      (openaiClient.chat.completions.create as jest.Mock).mockRejectedValue(new Error('API Error'));
+      (openaiClient.responses.create as jest.Mock).mockRejectedValue(new Error('API Error'));
 
       await expect(
         openAIService.processReceipt('base64image', 'household1', 'user1')
@@ -151,28 +148,25 @@ describe('OpenAIService', () => {
   describe('analyzeTranscription', () => {
     it('should analyze transcription and create expense', async () => {
       const mockResponse = {
-        choices: [
+        output: [
           {
-            message: {
-              tool_calls: [
-                {
-                  function: {
-                    name: 'log_expense',
-                    arguments: JSON.stringify({
-                      date: '2023-01-01',
-                      amount: 50,
-                      category: 'Transportation',
-                      subcategory: 'Fuel',
-                      notes: 'Gas station fill-up',
-                    }),
-                  },
+            content: [
+              {
+                type: 'tool_use',
+                name: 'log_expense',
+                input: {
+                  date: '2023-01-01',
+                  amount: 50,
+                  category: 'Transportation',
+                  subcategory: 'Fuel',
+                  notes: 'Gas station fill-up',
                 },
-              ],
-            },
+              },
+            ],
           },
         ],
       };
-      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.responses.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Transportation: Fuel, Public Transit'
       );
@@ -192,15 +186,17 @@ describe('OpenAIService', () => {
 
     it('should return null if no expense is extracted from transcription', async () => {
       const mockResponse = {
-        choices: [
+        output: [
           {
-            message: {
-              tool_calls: [],
-            },
+            content: [
+              {
+                type: 'message',
+              },
+            ],
           },
         ],
       };
-      (openaiClient.chat.completions.create as jest.Mock).mockResolvedValue(mockResponse);
+      (openaiClient.responses.create as jest.Mock).mockResolvedValue(mockResponse);
       mockCategoryHierarchyService.getCategoriesAndSubcategories.mockResolvedValue(
         'Transportation: Fuel, Public Transit'
       );
@@ -216,7 +212,7 @@ describe('OpenAIService', () => {
     });
 
     it('should throw AppError if OpenAI API call fails', async () => {
-      (openaiClient.chat.completions.create as jest.Mock).mockRejectedValue(new Error('API Error'));
+      (openaiClient.responses.create as jest.Mock).mockRejectedValue(new Error('API Error'));
 
       await expect(
         openAIService.analyzeTranscription('Transcription', 'household1', 'user1')
