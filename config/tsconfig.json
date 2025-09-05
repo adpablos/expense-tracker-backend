@@ -16,8 +16,16 @@
     "forceConsistentCasingInFileNames": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "typeRoots": [
+      "../src/types",
+      "../node_modules/@types"
+    ],
+    "types": ["node", "express"]
   },
-  "include": ["../src/**/*"],
+  "include": [
+    "../src/**/*",
+    "../src/types/**/*.d.ts"
+  ],
   "exclude": ["../node_modules", "../dist", "../tests", "../**/*.test.ts", "../**/*.spec.ts"]
 }

@@ -17,10 +17,9 @@ export interface AppConfig {
   openai: OpenAIConfig;
 }
 
-// Validate core environment variables
+// Validate core environment variables (keep minimal requirements for local dev)
 const validateCoreEnvVariables = () => {
-  const requiredVars = ['PORT', 'NODE_ENV', 'NPM_CONFIG_PRODUCTION'];
-
+  const requiredVars = ['PORT', 'NODE_ENV'];
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
   if (missingVars.length > 0) {
     throw new Error(`Missing required core environment variables: ${missingVars.join(', ')}`);
@@ -31,6 +30,7 @@ const validateCoreEnvVariables = () => {
 const createServerConfig = () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
+  // Default to false if not present to simplify local development
   npmConfigProduction: process.env.NPM_CONFIG_PRODUCTION === 'true',
 });
 

@@ -10,6 +10,6 @@ export const createOpenAIConfig = (): OpenAIConfig => {
 
   return {
     apiKey: process.env.OPENAI_API_KEY,
-    model: 'gpt-4o-mini',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   };
 };

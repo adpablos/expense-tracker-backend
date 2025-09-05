@@ -23,12 +23,7 @@ export interface Auth0Config {
 }
 
 export const createAuthConfig = (): Auth0Config => {
-  if (
-    !process.env.AUTH0_DOMAIN ||
-    !process.env.AUTH0_AUDIENCE ||
-    !process.env.AUTH0_CLIENT_ID ||
-    !process.env.AUTH0_CLIENT_SECRET
-  ) {
+  if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_AUDIENCE) {
     throw new Error('Missing required AUTH0 environment variables');
   }
 
@@ -38,7 +33,7 @@ export const createAuthConfig = (): Auth0Config => {
     issuer: `https://${process.env.AUTH0_DOMAIN}/`,
     algorithms: ['RS256'],
     jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
-    clientId: process.env.AUTH0_CLIENT_ID,
-    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    clientId: process.env.AUTH0_CLIENT_ID || '',
+    clientSecret: process.env.AUTH0_CLIENT_SECRET || '',
   };
 };

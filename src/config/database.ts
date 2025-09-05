@@ -1,5 +1,3 @@
-import { getEnvConfig } from './env';
-
 export interface DatabaseConfig {
   user: string;
   host: string;
@@ -10,9 +8,6 @@ export interface DatabaseConfig {
 }
 
 export const createDatabaseConfig = (): DatabaseConfig => {
-  const config = getEnvConfig();
-  const { database } = config;
-
   if (process.env.NODE_ENV === 'test') {
     return {
       user: 'test_user',
@@ -26,14 +21,21 @@ export const createDatabaseConfig = (): DatabaseConfig => {
 
   // Validar configuración
   if (
-    !database.user ||
-    !database.host ||
-    !database.database ||
-    !database.port ||
-    (process.env.NODE_ENV !== 'development' && !database.password)
+    !process.env.DB_USER ||
+    !process.env.DB_HOST ||
+    !process.env.DB_DATABASE ||
+    !process.env.DB_PORT ||
+    (process.env.NODE_ENV !== 'development' && !process.env.DB_PASSWORD)
   ) {
     throw new Error('Missing required database environment variables');
   }
 
-  return database;
+  return {
+    user: process.env.DB_USER!,
+    host: process.env.DB_HOST!,
+    database: process.env.DB_DATABASE!,
+    password: process.env.DB_PASSWORD || '',
+    port: parseInt(process.env.DB_PORT!, 10),
+    ssl: process.env.DB_SSL === 'true',
+  };
 };
