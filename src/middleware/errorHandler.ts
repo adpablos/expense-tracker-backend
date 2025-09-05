@@ -3,6 +3,7 @@ import { UnauthorizedError } from 'express-jwt';
 
 import logger from '../config/logger';
 import { AppError } from '../utils/AppError';
+import { getRequestContext } from '../utils/requestContext';
 
 interface DatabaseError extends Error {
   code?: string;
@@ -20,7 +21,7 @@ export const errorHandler = (
     params: req.params,
     query: req.query,
     body: req.body,
-    userId: req.user?.id,
+    ...getRequestContext(req),
     errorName: err.name,
     errorMessage: err.message,
     errorStack:

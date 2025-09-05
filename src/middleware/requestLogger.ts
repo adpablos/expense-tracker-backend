@@ -2,6 +2,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import logger from '../config/logger';
+import { getRequestContext } from '../utils/requestContext';
 
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   req.startTime = Date.now();
@@ -12,6 +13,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
     params: req.params && Object.keys(req.params).length ? req.params : undefined,
     query: req.query && Object.keys(req.query).length ? req.query : undefined,
     body: req.body && Object.keys(req.body).length ? req.body : undefined,
+    ...getRequestContext(req),
   };
 
   logger.info(`Incoming request: ${req.method} ${req.originalUrl}`, logData);

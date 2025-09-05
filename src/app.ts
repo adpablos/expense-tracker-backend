@@ -1,10 +1,16 @@
 import 'reflect-metadata';
+import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
+// eslint-disable-next-line import/no-named-as-default
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import { Container } from 'inversify';
 
+import config from './config/config';
 import { DI_TYPES } from './config/di';
 import { errorHandler } from './middleware/errorHandler';
+import { requestId } from './middleware/requestId';
 import authHelperRoutes from './routes/authHelperRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import expenseRoutes from './routes/expenseRoutes';
@@ -22,13 +28,20 @@ export interface AppRoutes {
 export function createApp(container: Container): express.Application {
   const app = express();
 
-  const allowedOrigins = [
-    'https://expense-tracker.alexdepablos.com', // Production frontend deployment
-    'https://expense-tracker-pwa-eta.vercel.app', // Remote deployment
-    'https://expense-tracker-backend-staging.up.railway.app', // Staging backend deployment
-    'http://localhost:3001', // local development
-    'http://localhost:3002', // local development
-  ];
+  const allowedOrigins = (
+    process.env.CORS_ALLOWED_ORIGINS ||
+    [
+      'https://expense-tracker.alexdepablos.com',
+      'https://expense-tracker-pwa-eta.vercel.app',
+      'https://expense-tracker-backend-staging.up.railway.app',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+    ].join(',')
+  )
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 
   const corsOptions = {
     origin: (
@@ -42,10 +55,26 @@ export function createApp(container: Container): express.Application {
       }
     },
     methods: 'GET,POST,PUT,DELETE',
-    allowedHeaders: 'Content-Type,Authorization',
+    allowedHeaders: 'Content-Type,Authorization,X-Household-Id',
   };
 
+  // Security and observability middlewares
+  app.use(requestId);
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    })
+  );
   app.use(cors(corsOptions));
+  app.use(compression());
+  app.set('trust proxy', 1);
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: Number(process.env.RATE_LIMIT_MAX || 300),
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api', limiter);
 
   const requestLogger = container.isBound(DI_TYPES.RequestLogger)
     ? container.get<express.RequestHandler>(DI_TYPES.RequestLogger)
@@ -60,6 +89,10 @@ export function createApp(container: Container): express.Application {
   app.use(express.json());
 
   setupSwagger(app);
+  // Health check
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', env: config.server.nodeEnv });
+  });
 
   const routes: AppRoutes = {
     main: {

@@ -6,7 +6,7 @@ import { User } from '../models/User';
 // Extend the Express Request interface to include custom properties
 declare global {
   namespace Express {
-    interface Request {
+    export interface Request {
       auth?: {
         sub: string;
         email: string;
@@ -14,9 +14,7 @@ declare global {
       user?: User;
       currentHouseholdId?: string;
       startTime: number;
+      requestId?: string;
     }
   }
 }
-
-// Export an empty object to ensure this file is treated as a module
-export {};

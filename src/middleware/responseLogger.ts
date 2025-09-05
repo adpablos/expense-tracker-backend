@@ -2,6 +2,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import logger from '../config/logger';
+import { getRequestContext } from '../utils/requestContext';
 
 export const responseLogger = (req: Request, res: Response, next: NextFunction) => {
   const originalSend = res.send;
@@ -14,6 +15,7 @@ export const responseLogger = (req: Request, res: Response, next: NextFunction) 
       responseTime: Date.now() - (req.startTime || Date.now()),
       contentLength: res.get ? res.get('Content-Length') : undefined,
       body: process.env.NODE_ENV !== 'production' ? body : undefined,
+      ...getRequestContext(req),
     };
 
     if (typeof logData.body === 'object') {
