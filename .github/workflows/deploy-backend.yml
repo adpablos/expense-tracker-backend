@@ -19,6 +19,8 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,9 +32,6 @@ jobs:
 
       - name: Install Railway CLI
         run: npm i -g @railway/cli@^4
-
-      - name: Railway auth
-        run: railway auth --token ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Link project
         run: railway link --project $RAILWAY_PROJECT_ID
@@ -68,7 +67,6 @@ jobs:
           else
             echo "Skipping smoke test: BACKEND_HEALTH_URL not set"
           fi
-
 
 
 
